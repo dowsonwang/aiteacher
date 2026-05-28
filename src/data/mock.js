@@ -42,22 +42,19 @@ export const banners = [
 const assetVersion = Date.now().toString();
 const localCharacterImages = [
   `/images/home/people.png?v=${assetVersion}`,
-  `/images/home/people1.png?v=${assetVersion}`,
-  `/images/home/people2.png?v=${assetVersion}`,
-  `/images/home/people3.png?v=${assetVersion}`,
-  `/images/home/people4.png?v=${assetVersion}`,
-  `/images/home/people5.png?v=${assetVersion}`,
-  `/images/home/people6.png?v=${assetVersion}`,
-  `/images/home/people7.png?v=${assetVersion}`,
-  `/images/home/people8.png?v=${assetVersion}`,
-  `/images/home/people9.png?v=${assetVersion}`,
-  `/images/home/people10.png?v=${assetVersion}`,
+  `/images/create/results/standard/hero-1.png?v=${assetVersion}`,
+  `/images/create/results/standard/hero-2.png?v=${assetVersion}`,
+  `/images/create/results/standard/hero-3.png?v=${assetVersion}`,
+  `/images/create/results/vip/candidate-1-hero.png?v=${assetVersion}`,
+  `/images/create/results/vip/candidate-2-hero.png?v=${assetVersion}`,
+  `/images/create/results/vip/candidate-3-hero.png?v=${assetVersion}`,
 ];
 
 const localCharacterImageForIndex = (index) => {
   const pattern = [0, 4, 1, 7, 2, 9, 3, 10, 5, 8, 6, 1, 9, 2, 7, 3, 10, 4, 8, 5, 6, 2, 7, 1];
   const pick = pattern[(Math.max(1, index) - 1) % pattern.length];
-  return localCharacterImages[pick] || localCharacterImages[0];
+  const safeIdx = Math.abs(pick ?? 0) % Math.max(1, localCharacterImages.length);
+  return localCharacterImages[safeIdx] || localCharacterImages[0];
 };
 
 const makeCharacter = ({ index, name, age, bio, starter, avatarPrompt, heroUrl, tags = [], kind }) => {

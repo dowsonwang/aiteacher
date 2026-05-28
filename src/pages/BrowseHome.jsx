@@ -5,7 +5,7 @@ import ImmersiveCharacterCard from "../components/ImmersiveCharacterCard.jsx";
 import LiveStreamCard from "../components/LiveStreamCard.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
 import ShortCard from "../components/ShortCard.jsx";
-import { ChevronDown, Pause, Play, Volume2, VolumeX } from "lucide-react";
+import { ChevronDown, Compass, Film, Pause, Play, Volume2, VolumeX, Wand2 } from "lucide-react";
 import { cn } from "../lib/utils.js";
 import { liveHosts, shortDramas } from "../data/mock.js";
 import { useAppStore } from "../stores/useAppStore.js";
@@ -32,7 +32,6 @@ export default function BrowseHome() {
     const src = sources[i] || sources[0];
     return `${src}?v=${assetVersion}`;
   };
-
   const onStartChat = (characterId) => {
     const conversationId = openConversationForCharacter(characterId);
     if (!session.isLoggedIn) {
@@ -79,11 +78,13 @@ export default function BrowseHome() {
   const showLive = false;
   const featuredDrama = shortDramas[0];
   const featuredVideoSrc = `/videos/feed/feed-02.mp4?v=${assetVersion}`;
-  const quickLinks = useMemo(
+  const heroLinks = useMemo(
     () => [
       {
         label: "Shorts",
         href: "/shorts",
+        Icon: Film,
+        accent: "from-amber-200/60 via-orange-100/40 to-rose-200/50",
         coverUrl: t2i(
           "a cinematic still of a modern language learning short video, vertical reel style, warm studio lighting, abstract typography shapes, vibrant gradient, high contrast, premium app aesthetic, no text, ultra realistic, 35mm",
           "landscape_4_3",
@@ -92,6 +93,8 @@ export default function BrowseHome() {
       {
         label: "Discover",
         href: "/feed",
+        Icon: Compass,
+        accent: "from-sky-200/60 via-cyan-100/40 to-emerald-200/50",
         coverUrl: t2i(
           "a premium discovery feed for language learners, floating video cards and chat bubbles, clean white UI, soft shadows, neon accent gradient, modern minimal design, no text, ultra realistic, high detail",
           "landscape_4_3",
@@ -100,16 +103,10 @@ export default function BrowseHome() {
       {
         label: "Create",
         href: "/create",
+        Icon: Wand2,
+        accent: "from-violet-200/60 via-fuchsia-100/40 to-rose-200/50",
         coverUrl: t2i(
           "a stylish character creation screen for an AI language tutor, avatar silhouette, sliders and panels, bold color accents, glossy glassmorphism, modern premium UI, no text, ultra realistic, high detail",
-          "landscape_4_3",
-        ),
-      },
-      {
-        label: "Chat",
-        href: "/chat",
-        coverUrl: t2i(
-          "a cozy chat scene between a learner and an AI tutor on a smartphone, message bubbles, subtle gradient background, premium app look, soft lighting, no text, ultra realistic, high detail",
           "landscape_4_3",
         ),
       },
@@ -121,64 +118,70 @@ export default function BrowseHome() {
   const [featuredPaused, setFeaturedPaused] = useState(false);
 
   return (
-    <div className="space-y-10">
-      <section className="relative overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm">
-        <div className="absolute inset-0 bg-gradient-to-r from-zinc-900/[0.035] via-transparent to-rose-500/[0.045]" />
-        <div className="relative px-7 py-10 sm:px-10 sm:py-12">
-          <div className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-[34px]">AI Language Coach</div>
-          <div className="mt-3 max-w-3xl text-sm leading-relaxed text-zinc-600 sm:text-[15px]">
-            Practice English with AI tutors. Get instant corrections, build vocabulary, and improve speaking confidence through bite-sized scenarios.
+    <div className="space-y-8">
+      <section className="grid grid-cols-1 gap-6 lg:h-[420px] lg:min-h-[380px] lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:items-stretch">
+        <div className="flex h-full flex-col gap-5">
+          <div className="px-1 pt-1">
+            <div className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-[34px]">AI Language Coach</div>
+            <div className="mt-3 max-w-[560px] text-sm leading-relaxed text-zinc-600 sm:text-[15px]">
+              Practice English with AI tutors—fast, natural, and actually useful.
+              <br />
+              Send one sentence and get a correction + a more native rewrite + one short drill to repeat.
+              <br />
+              Use Shorts for role-play, Discover for quick inspiration, or Create your own tutor. Ten minutes a day is enough to feel progress.
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {["Instant corrections", "Daily drills", "Real scenarios"].map((x) => (
+                <div
+                  key={x}
+                  className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-[11px] font-semibold text-zinc-700"
+                >
+                  {x}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            {heroLinks.map((x) => {
+              const Icon = x.Icon;
+              return (
+                <button
+                  key={x.href}
+                  type="button"
+                  onClick={() => navigate(x.href)}
+                  className="group relative min-h-[124px] overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm outline-none transition hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-zinc-900/40"
+                >
+                  <div className={cn("absolute inset-0 bg-gradient-to-br opacity-70", x.accent)} />
+                  <img
+                    src={x.coverUrl}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover opacity-25 saturate-150 transition duration-500 group-hover:scale-[1.06] group-hover:opacity-35"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-white/55 via-white/15 to-white/0" />
+                  <div className="relative flex h-full flex-col justify-between p-5">
+                    <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/70 bg-white/55 text-zinc-900 shadow-sm backdrop-blur">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-sm font-semibold tracking-wide text-zinc-900">{x.label}</div>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
-      </section>
 
-      {showLive ? (
-        <section id="live" className="rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm">
-          <SectionHeader title="Live" href="/live" />
-          <div className="mt-5 flex gap-3 overflow-x-auto pb-2">
-            {liveHosts.slice(0, cardCount).map((h) => (
-              <LiveStreamCard key={h.id} host={h} coverSrc={liveCoverSrc} onClick={() => navigate("/live")} />
-            ))}
+        <section className="flex h-full flex-col overflow-hidden rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-base font-semibold text-zinc-900">Shorts</div>
+            <button type="button" onClick={() => navigate("/shorts")} className="text-sm font-medium text-zinc-600 hover:text-zinc-900">
+              View all →
+            </button>
           </div>
-        </section>
-      ) : null}
 
-      <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <section className="relative overflow-hidden rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm">
-          <div className="absolute inset-0 bg-gradient-to-br from-zinc-900/[0.035] via-transparent to-rose-500/[0.05]" />
-          <div className="relative">
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-base font-semibold text-zinc-900">Quick Access</div>
-              <div className="text-xs font-semibold text-zinc-500">Start in one tap</div>
-            </div>
-            <div className="mt-5 h-[312px] overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-100 shadow-sm">
-              <div className="grid h-full grid-cols-2 grid-rows-2 gap-px">
-                {quickLinks.map((x) => (
-                  <button
-                    key={x.href}
-                    type="button"
-                    onClick={() => navigate(x.href)}
-                    className="group relative overflow-hidden bg-black"
-                  >
-                    <img
-                      src={x.coverUrl}
-                      alt=""
-                      className="absolute inset-0 h-full w-full object-cover opacity-95 transition group-hover:scale-[1.04]"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
-                    <div className="absolute inset-0 flex items-end p-4">
-                      <div className="text-sm font-semibold text-white">{x.label}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm">
-          <SectionHeader title="Shorts" href="/shorts" />
-          <div className="mt-5 flex gap-3 overflow-x-auto pb-2">
+          <div className="no-scrollbar mt-5 flex min-h-0 flex-1 gap-3 overflow-x-auto pb-2">
             {featuredDrama ? (
               <div
                 role="button"
@@ -187,20 +190,22 @@ export default function BrowseHome() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") navigate(`/shorts/${featuredDrama.id}`);
                 }}
-                className="group relative h-[312px] aspect-[9/16] flex-shrink-0 cursor-pointer overflow-hidden rounded-3xl border border-zinc-200 bg-black shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/40"
+                className="group relative w-44 flex-shrink-0 overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm transition hover:scale-[1.03] hover:shadow-md outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/40"
               >
-                <video
-                  ref={featuredVideoRef}
-                  src={featuredVideoSrc}
-                  autoPlay
-                  loop
-                  muted={featuredMuted}
-                  playsInline
-                  className="absolute inset-0 h-full w-full object-cover"
-                  onPlay={() => setFeaturedPaused(false)}
-                  onPause={() => setFeaturedPaused(true)}
-                />
-                <div className="absolute inset-0 bg-black/0 transition group-hover:bg-black/25" />
+                <div className="aspect-[9/16] w-full overflow-hidden bg-black">
+                  <video
+                    ref={featuredVideoRef}
+                    src={featuredVideoSrc}
+                    autoPlay
+                    loop
+                    muted={featuredMuted}
+                    playsInline
+                    className="absolute inset-0 h-full w-full object-cover"
+                    onPlay={() => setFeaturedPaused(false)}
+                    onPause={() => setFeaturedPaused(true)}
+                  />
+                </div>
+                <div className="absolute inset-0 bg-black/0 transition group-hover:bg-black/20" />
                 <div className="absolute inset-0 opacity-0 transition group-hover:opacity-100">
                   <button
                     type="button"
@@ -212,7 +217,7 @@ export default function BrowseHome() {
                       if (el.paused) el.play();
                       else el.pause();
                     }}
-                    className="absolute left-1/2 top-1/2 inline-flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-2xl bg-white/15 text-white backdrop-blur hover:bg-white/20"
+                    className="absolute left-1/2 top-1/2 inline-flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-2xl bg-white/15 text-white backdrop-blur hover:bg-white/20"
                   >
                     {featuredPaused ? <Play className="h-5 w-5" /> : <Pause className="h-5 w-5" />}
                   </button>
@@ -223,7 +228,7 @@ export default function BrowseHome() {
                       e.stopPropagation();
                       setFeaturedMuted((v) => !v);
                     }}
-                    className="absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 text-white backdrop-blur hover:bg-white/20"
+                    className="absolute right-3 top-14 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15 text-white backdrop-blur hover:bg-white/20"
                   >
                     {featuredMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
                   </button>
@@ -231,7 +236,7 @@ export default function BrowseHome() {
               </div>
             ) : null}
 
-            {shortDramas.slice(1, cardCount + 1).map((d, i) => (
+            {shortDramas.slice(1, cardCount).map((d, i) => (
               <ShortCard
                 key={d.id}
                 drama={d}
@@ -244,6 +249,17 @@ export default function BrowseHome() {
           </div>
         </section>
       </section>
+
+      {showLive ? (
+        <section id="live" className="rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm">
+          <SectionHeader title="Live" href="/live" />
+          <div className="mt-5 flex gap-3 overflow-x-auto pb-2">
+            {liveHosts.slice(0, cardCount).map((h) => (
+              <LiveStreamCard key={h.id} host={h} coverSrc={liveCoverSrc} onClick={() => navigate("/live")} />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="space-y-4">
         <div className="flex items-center justify-between gap-3">

@@ -24,31 +24,23 @@ export default function Chat() {
     openAuth({ mode: "login", postAuthPath: id ? `/chat/${id}` : "/chat" });
   }, [id, openAuth, session.isLoggedIn]);
 
-  const formatTime = (ts) => {
-    if (!ts) return "";
-    const d = new Date(ts);
-    const now = new Date();
-    const pad = (n) => `${n}`.padStart(2, "0");
-    const sameDay =
-      d.getFullYear() === now.getFullYear() &&
-      d.getMonth() === now.getMonth() &&
-      d.getDate() === now.getDate();
-    if (sameDay) return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  };
+  const latestConversationId = useMemo(() => {
+    if (!conversations.length) return "";
+    return conversations[0]?.id || "";
+  }, [conversations]);
+
+  useEffect(() => {
+    if (!session.isLoggedIn) return;
+    if (id) return;
+    if (!latestConversationId) return;
+    navigate(`/chat/${latestConversationId}`, { replace: true });
+  }, [id, latestConversationId, navigate, session.isLoggedIn]);
 
   const listItems = useMemo(
     () =>
       conversations.map((c) => {
         const character = characters.find((x) => x.id === c.characterId);
-        const last = c.messages?.slice(-1)[0] || null;
-        const preview = last?.text
-          ? last.text
-          : last?.attachments?.length
-            ? `[${last.attachments[0]?.kind === "image" ? "Image" : last.attachments[0]?.kind === "video" ? "Video" : "File"}]`
-            : "…";
-        const ts = c.updatedAt || last?.createdAt || null;
-        return { conversation: c, character, preview, ts };
+        return { conversation: c, character };
       }),
     [characters, conversations],
   );
@@ -70,59 +62,65 @@ export default function Chat() {
     );
   }
 
-  return (
-    <div className="-mx-6 -my-6 relative h-[calc(100dvh-56px)] w-full overflow-hidden p-3">
-      <div className="flex h-full min-h-0 overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
-        <div className="flex h-full w-72 min-h-0 flex-col border-r border-zinc-200">
-          <div className="flex items-center justify-between gap-3 px-4 py-4">
-            <div className="text-sm font-semibold text-zinc-900">{t(language, "chat_title")}</div>
-          </div>
-          <div className="min-h-0 flex-1 overflow-auto px-2 pb-3">
-          {conversations.length ? (
-            <div className="space-y-1">
-              {listItems.map(({ conversation, character, preview, ts }) => {
-                return (
-                  <button
-                    key={conversation.id}
-                    type="button"
-                    onClick={() => navigate(`/chat/${conversation.id}`)}
-                    className={cn(
-                      "flex w-full items-start gap-3 rounded-2xl px-3 py-3 text-left hover:bg-zinc-50",
-                      id === conversation.id ? "bg-zinc-900 text-white hover:bg-zinc-900" : "text-zinc-900",
-                    )}
-                  >
-                    <img
-                      src={character?.avatarUrl}
-                      alt={character?.name || ""}
-                      className="h-9 w-9 rounded-full object-cover"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="truncate text-sm font-semibold">{character?.name || "-"}</div>
-                        <div className={cn("shrink-0 text-[11px]", id === conversation.id ? "text-white/70" : "text-zinc-400")}>
-                          {formatTime(ts)}
-                        </div>
-                      </div>
-                      <div className={cn("mt-1 truncate text-xs", id === conversation.id ? "text-white/80" : "text-zinc-500")}>
-                        {preview}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+  if (!conversations.length) {
+    return (
+      <div className="-mx-6 -my-6 relative h-[calc(100dvh-56px)] w-full overflow-hidden p-3">
+        <div className="flex h-full min-h-0 overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
+          <div className="flex h-full w-16 min-h-0 flex-col items-center overflow-auto py-4" />
+          <div className="flex min-w-0 flex-1 items-center justify-center p-6">
+            <div className="w-full max-w-md rounded-3xl border border-zinc-200 bg-white p-6 text-center shadow-sm">
+              <div className="text-base font-semibold text-zinc-900">No chats yet</div>
+              <div className="mt-2 text-sm leading-relaxed text-zinc-600">
+                Go to Home and pick a tutor you want to chat with. Your conversations will show up here.
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate("/browse")}
+                className="mt-4 inline-flex items-center justify-center rounded-2xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
+              >
+                Go to Home
+              </button>
             </div>
-          ) : (
-            <div className="px-3 py-6 text-sm text-zinc-500">{t(language, "chat_empty_title")}</div>
-          )}
           </div>
         </div>
+      </div>
+    );
+  }
 
-        <div className="min-w-0 flex-1 overflow-hidden">
-          {id ? (
-            <Outlet />
+  return (
+    <div className="-mx-6 -my-6 relative h-[calc(100dvh-56px)] w-full overflow-hidden p-3">
+      <div className="flex h-full min-h-0 gap-3 overflow-hidden">
+        <div className="flex h-full w-16 min-h-0 flex-col items-center overflow-auto py-4">
+          {conversations.length ? (
+            <div className="flex w-full flex-col items-center gap-3">
+              {listItems.map(({ conversation, character }) => (
+                <button
+                  key={conversation.id}
+                  type="button"
+                  onClick={() => navigate(`/chat/${conversation.id}`)}
+                  className="flex h-12 w-12 items-center justify-center"
+                  aria-label={character?.name || "Chat"}
+                >
+                  <img
+                    src={character?.avatarUrl}
+                    alt={character?.name || ""}
+                    className={cn(
+                      "h-10 w-10 rounded-full object-cover",
+                      id === conversation.id ? "ring-2 ring-zinc-900 ring-offset-2 ring-offset-white" : "",
+                    )}
+                  />
+                </button>
+              ))}
+            </div>
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-zinc-500">{t(language, "chat_empty_title")}</div>
+            <div className="px-2 py-6 text-xs text-zinc-400">{t(language, "chat_empty_title")}</div>
           )}
+        </div>
+
+        <div className="flex h-full min-h-0 flex-1 overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
+          <div className="min-w-0 flex-1 overflow-hidden">
+            {id ? <Outlet /> : <div className="flex h-full items-center justify-center text-sm text-zinc-500">…</div>}
+          </div>
         </div>
       </div>
     </div>

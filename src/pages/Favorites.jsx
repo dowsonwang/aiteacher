@@ -24,6 +24,7 @@ export default function Favorites() {
   const openAuth = useUIStore((s) => s.openAuth);
   const [tab, setTab] = useState("shorts");
   const askedAuthRef = useRef(false);
+  const gateImgSrc = useMemo(() => `/images/home/login.png?v=${Date.now().toString()}`, []);
 
   useEffect(() => {
     if (session.isLoggedIn) return;
@@ -55,8 +56,6 @@ export default function Favorites() {
   }, [favoriteCharacters, getAllCharacters]);
 
   if (!session.isLoggedIn) {
-    const assetVersion = useMemo(() => Date.now().toString(), []);
-    const gateImgSrc = `/images/home/login.png?v=${assetVersion}`;
     return (
       <div className="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col overflow-hidden px-6 py-6">
         <div className="flex min-h-0 flex-1 items-center justify-center">
