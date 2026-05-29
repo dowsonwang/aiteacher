@@ -77,11 +77,11 @@ export default function Sidebar() {
     >
       <div className={cn("flex items-center justify-between", sidebarCollapsed ? "px-1" : "px-0")}>
         {sidebarCollapsed ? (
-          <img src={brandLogoUrl} alt="AI Language Coach" className="h-9 w-9 rounded-xl object-cover" />
+          <img src={brandLogoUrl} alt="Heartbits ai" className="h-9 w-9 rounded-xl object-cover" />
         ) : (
           <div className="flex items-center gap-3">
-            <img src={brandLogoUrl} alt="AI Language Coach" className="h-9 w-9 rounded-xl object-cover" />
-            <div className="text-sm font-semibold text-zinc-900">AI Language Coach</div>
+            <img src={brandLogoUrl} alt="Heartbits ai" className="h-9 w-9 rounded-xl object-cover" />
+            <div className="text-sm font-semibold text-zinc-900">Heartbits ai</div>
           </div>
         )}
         <button

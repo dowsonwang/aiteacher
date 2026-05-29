@@ -122,23 +122,11 @@ export default function BrowseHome() {
       <section className="grid grid-cols-1 gap-6 lg:h-[420px] lg:min-h-[380px] lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:items-stretch">
         <div className="flex h-full flex-col gap-5">
           <div className="px-1 pt-1">
-            <div className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-[34px]">AI Language Coach</div>
-            <div className="mt-3 max-w-[560px] text-sm leading-relaxed text-zinc-600 sm:text-[15px]">
-              Practice English with AI tutors—fast, natural, and actually useful.
-              <br />
-              Send one sentence and get a correction + a more native rewrite + one short drill to repeat.
-              <br />
-              Use Shorts for role-play, Discover for quick inspiration, or Create your own tutor. Ten minutes a day is enough to feel progress.
+            <div className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-[34px]">
+              Some characters are stories. Some are mirrors.
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {["Instant corrections", "Daily drills", "Real scenarios"].map((x) => (
-                <div
-                  key={x}
-                  className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-[11px] font-semibold text-zinc-700"
-                >
-                  {x}
-                </div>
-              ))}
+            <div className="mt-3 max-w-[560px] text-sm leading-relaxed text-zinc-600 sm:text-[15px]">
+              Create AI characters, discover new personas, watch Shorts, and let them unfold into digital selves of their own. Chat, roleplay, follow their worlds, and see what parts of you answer back.
             </div>
           </div>
 
@@ -335,20 +323,9 @@ export default function BrowseHome() {
           </div>
 
           <div className="rounded-3xl border border-zinc-200 bg-white p-6 text-sm leading-relaxed text-zinc-700 shadow-sm">
-            <div className="text-sm font-semibold text-zinc-900">Learn English faster with AI Language Coach</div>
+            <div className="text-sm font-semibold text-zinc-900">Where roleplay stays imaginative, expressive, and safe.</div>
             <div className="mt-2 text-zinc-600">
-              AI Language Coach is an AI-powered English learning app built for real practice: speaking, writing, grammar, and vocabulary—without long lessons.
-            </div>
-            <div className="mt-3 space-y-3">
-              <div>
-                Practice with AI tutors anytime. Get instant corrections, natural rewrites, and bite-sized drills that fit your daily routine.
-              </div>
-              <div>
-                Train with realistic scenarios like travel, workplace English, interviews, and small talk. Build confidence through repetition and feedback.
-              </div>
-              <div>
-                Turn mistakes into progress. Save corrected sentences, review them daily, and watch your fluency improve session by session.
-              </div>
+              Heartbits is a SFW AI chat platform for character-led stories with emotional depth. It is built for roleplay that can feel playful, intimate, strange, comforting, or quietly revealing, while staying safe by design.
             </div>
           </div>
         </div>
