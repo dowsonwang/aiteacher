@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Heart, Lock, Volume2, VolumeX } from "lucide-react";
+import { Heart, Lock, Play } from "lucide-react";
 import DiamondIcon from "../components/DiamondIcon.jsx";
+import { shortDramas } from "../data/mock.js";
 import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
 
@@ -117,6 +118,10 @@ export default function Feed() {
 
   const active = items[index] || items[0];
   const character = characters.find((c) => c.id === active?.characterId);
+  const characterShorts = useMemo(() => {
+    if (!character?.id) return [];
+    return shortDramas.filter((d) => d.characterId === character.id);
+  }, [character?.id]);
   const isVideoLocked = Boolean(active?.requiresUnlock) && !Boolean(unlockedFeedVideos?.[active?.id]);
   const clips = useMemo(() => {
     const activeId = active?.id || "feed";
@@ -127,17 +132,18 @@ export default function Feed() {
         videoSrc: `/videos/feed/feed-0${n}.mp4?v=${assetVersion}`,
         coverUrl: `/images/home/shorts-cover${n}.png?v=${assetVersion}`,
         index: i + 1,
+        free: i === 0,
       };
     });
   }, [active?.id, assetVersion]);
   const selectedClip = useMemo(() => clips.find((c) => c.id === selectedClipId) || null, [clips, selectedClipId]);
-  const isMainLocked = selectedClip ? !Boolean(unlockedFeedVideos?.[selectedClip.id]) : isVideoLocked;
+  const isMainLocked = selectedClip ? !(selectedClip.free || Boolean(unlockedFeedVideos?.[selectedClip.id])) : isVideoLocked;
   const mainVideoSrc = selectedClip ? selectedClip.videoSrc : active?.videoSrc;
   const mainVideoKey = selectedClip ? selectedClip.id : active?.id;
   const shareUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
     const base = window.location?.origin || "";
-    return `${base}/feed?item=${active?.id || ""}`;
+    return `${base}/feed?item=${active?.id || ""}&clip=01`;
   }, [active?.id]);
 
   const next = () =>
@@ -158,7 +164,8 @@ export default function Feed() {
 
   useEffect(() => {
     setShareOpen(false);
-    setSelectedClipId(null);
+    const activeId = active?.id || "feed";
+    setSelectedClipId(`${activeId}-clip-01`);
   }, [active?.id]);
 
   useEffect(() => {
@@ -172,85 +179,50 @@ export default function Feed() {
 
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [muted, setMuted] = useState(false);
-  const [volume, setVolume] = useState(0.9);
 
   const commentsWrapRef = useRef(null);
   const pendingCommentRef = useRef(null);
 
   const [commentInput, setCommentInput] = useState("");
-  const [expandedReplies, setExpandedReplies] = useState({});
   const [commentLikes, setCommentLikes] = useState({});
-  const [commentsByFeed, setCommentsByFeed] = useState(() => ({
-    "feed-01": [
+  const [commentsByCharacter, setCommentsByCharacter] = useState(() => ({
+    c1: [
       {
         id: "c-01",
         user: { name: "Sienna", avatar: makeDefaultAvatar("sienna") },
         createdAt: Date.now() - 3600 * 1000 * 6,
         text: "Great pacing. Could you correct my stress on 'comfortable'?",
         likes: 14,
-        replies: [
-          {
-            id: "c-01-r1",
-            user: { name: "Noah", avatar: makeDefaultAvatar("noah") },
-            createdAt: Date.now() - 3600 * 1000 * 4,
-            text: "Same. Also, what’s the difference between 'assist' and 'help'?",
-            likes: 3,
-          },
-        ],
       },
     ],
-    "feed-02": [
+    c2: [
       {
         id: "c-02",
         user: { name: "Aria", avatar: makeDefaultAvatar("aria") },
         createdAt: Date.now() - 3600 * 1000 * 20,
         text: "These travel phrases are so useful. Can we role-play a hotel check-in?",
         likes: 29,
-        replies: [],
       },
     ],
-    "feed-03": [
+    c3: [
       {
         id: "c-03",
         user: { name: "Ethan", avatar: makeDefaultAvatar("ethan") },
         createdAt: Date.now() - 60000 * 55,
         text: "Finally understood present perfect. More examples please!",
         likes: 8,
-        replies: [
-          {
-            id: "c-03-r1",
-            user: { name: "Lia", avatar: makeDefaultAvatar("lia") },
-            createdAt: Date.now() - 60000 * 22,
-            text: "Could you give 3 sentences I can practice and correct?",
-            likes: 2,
-          },
-          {
-            id: "c-03-r2",
-            user: { name: "Kai", avatar: makeDefaultAvatar("kai") },
-            createdAt: Date.now() - 60000 * 10,
-            text: "What’s a natural way to say this in English?",
-            likes: 1,
-          },
-        ],
       },
     ],
-    "feed-04": [
+    c4: [
       {
         id: "c-04",
         user: { name: "Mason", avatar: makeDefaultAvatar("mason") },
         createdAt: Date.now() - 60000 * 8,
         text: "Listening tip: should I focus on keywords or every word?",
         likes: 4,
-        replies: [],
       },
     ],
   }));
-
-  const commentCount = useMemo(() => {
-    const list = commentsByFeed[active?.id] || [];
-    return list.reduce((sum, c) => sum + 1 + (c.replies?.length || 0), 0);
-  }, [active?.id, commentsByFeed]);
 
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -284,14 +256,12 @@ export default function Feed() {
     setActiveTab("character");
     setLiked(false);
     setFollowed(false);
-    setIsPlaying(!isVideoLocked);
+    setIsPlaying(true);
     setVideoVisible(false);
     window.setTimeout(() => setVideoVisible(true), 20);
     const el = videoRef.current;
-    if (!el || isVideoLocked) return;
+    if (!el) return;
     el.currentTime = 0;
-    el.muted = muted;
-    el.volume = volume;
     const p = el.play();
     if (p?.catch) p.catch(() => {});
   }, [active?.id]);
@@ -304,8 +274,6 @@ export default function Feed() {
     const el = videoRef.current;
     if (!el || isMainLocked) return;
     el.currentTime = 0;
-    el.muted = muted;
-    el.volume = volume;
     const p = el.play();
     if (p?.catch) p.catch(() => {});
   }, [selectedClipId, isMainLocked]);
@@ -317,42 +285,27 @@ export default function Feed() {
     }
     const el = videoRef.current;
     if (!el) return;
-    el.muted = muted;
-    el.volume = volume;
     const p = el.play();
     if (p?.catch) p.catch(() => {});
     setIsPlaying(true);
   }, [isMainLocked]);
 
   useEffect(() => {
-    const el = videoRef.current;
-    if (!el) return;
-    el.muted = muted;
-  }, [muted]);
-
-  useEffect(() => {
-    const el = videoRef.current;
-    if (!el) return;
-    el.volume = volume;
-  }, [volume]);
-
-  useEffect(() => {
     if (!session.isLoggedIn) return;
     if (!pendingCommentRef.current) return;
-    const { feedId, text } = pendingCommentRef.current;
+    const { characterId, text } = pendingCommentRef.current;
     pendingCommentRef.current = null;
-    setCommentsByFeed((prevMap) => {
+    setCommentsByCharacter((prevMap) => {
       const nextMap = { ...prevMap };
-      const nextList = [...(nextMap[feedId] || [])];
+      const nextList = [...(nextMap[characterId] || [])];
       nextList.unshift({
         id: `c-u-${Date.now().toString(36)}`,
         user: { name: session.displayName || "You", avatar: session.avatarUrl || makeDefaultAvatar("you") },
         createdAt: Date.now(),
         text,
         likes: 0,
-        replies: [],
       });
-      nextMap[feedId] = nextList;
+      nextMap[characterId] = nextList;
       return nextMap;
     });
   }, [session.displayName, session.avatarUrl, session.isLoggedIn]);
@@ -381,32 +334,26 @@ export default function Feed() {
     navigate(`/chat/${conversationId}`);
   };
 
-  const openShorts = () => {
-    if (!active?.hasShorts || !active.shortId) return;
-    navigate(`/shorts/${active.shortId}`);
-  };
-
   const sendComment = () => {
     const text = commentInput.trim();
-    if (!text || !active?.id) return;
+    if (!text || !character?.id) return;
     setCommentInput("");
     if (!session.isLoggedIn) {
-      pendingCommentRef.current = { feedId: active.id, text };
+      pendingCommentRef.current = { characterId: character.id, text };
       openAuth({ mode: "login" });
       return;
     }
-    setCommentsByFeed((prevMap) => {
+    setCommentsByCharacter((prevMap) => {
       const nextMap = { ...prevMap };
-      const nextList = [...(nextMap[active.id] || [])];
+      const nextList = [...(nextMap[character.id] || [])];
       nextList.unshift({
         id: `c-u-${Date.now().toString(36)}`,
         user: { name: session.displayName || "You", avatar: session.avatarUrl || makeDefaultAvatar("you") },
         createdAt: Date.now(),
         text,
         likes: 0,
-        replies: [],
       });
-      nextMap[active.id] = nextList;
+      nextMap[character.id] = nextList;
       return nextMap;
     });
   };
@@ -417,7 +364,7 @@ export default function Feed() {
 
   if (!active || !character) return null;
 
-  const comments = commentsByFeed[active.id] || [];
+  const comments = commentsByCharacter[character.id] || [];
 
   return (
     <div className="-mx-6 -my-6 h-[calc(100dvh-56px-48px)] bg-zinc-950 text-white">
@@ -426,6 +373,7 @@ export default function Feed() {
           <div className="flex h-full min-h-0 items-stretch justify-center gap-4 px-6 py-6">
             <div
               onWheel={onVideoWheel}
+              onClick={() => togglePlay()}
               className={
                 videoVisible
                   ? "group relative h-full w-auto max-w-[520px] aspect-[9/16] overflow-hidden rounded-3xl bg-black opacity-100 transition-opacity duration-300"
@@ -439,8 +387,7 @@ export default function Feed() {
                   className="absolute inset-0 h-full w-full object-cover"
                   src={mainVideoSrc}
                   playsInline
-                  muted={muted}
-                  onClick={togglePlay}
+                  muted
                   onPlay={() => setIsPlaying(true)}
                   onPause={() => setIsPlaying(false)}
                 />
@@ -448,45 +395,21 @@ export default function Feed() {
 
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
 
-              <div className="absolute inset-x-0 bottom-0 p-4">
-                <div className="text-sm font-semibold">{character.name}</div>
-              </div>
-
-              <div className="absolute inset-x-0 bottom-0 p-4">
-                <div className="flex items-center justify-between gap-4 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                  <div className="pointer-events-auto flex items-center gap-2 rounded-2xl bg-black/40 px-3 py-2 backdrop-blur">
-                    <button
-                      type="button"
-                      onClick={togglePlay}
-                      className="rounded-lg px-2 py-1 text-xs font-semibold text-white hover:bg-white/10"
-                    >
-                      {isPlaying ? "Pause" : "Play"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMuted((v) => !v)}
-                      className="inline-flex items-center justify-center rounded-lg px-2 py-1 text-white hover:bg-white/10"
-                      aria-label="Mute"
-                    >
-                      {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                    </button>
-                    <input
-                      value={volume}
-                      onChange={(e) => setVolume(Number(e.target.value))}
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      className="w-20"
-                    />
+              {!isMainLocked && !isPlaying ? (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div className="inline-flex h-20 w-20 items-center justify-center rounded-[28px] border border-white/20 bg-white/10 text-white shadow-2xl backdrop-blur">
+                    <Play className="h-8 w-8 translate-x-[1px]" fill="currentColor" />
                   </div>
                 </div>
-              </div>
+              ) : null}
 
               <div className="absolute bottom-5 right-4 space-y-4">
                 <button
                   type="button"
-                  onClick={() => setLiked((v) => !v)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLiked((v) => !v);
+                  }}
                   className="flex flex-col items-center gap-1 text-white/90"
                 >
                   <span
@@ -520,7 +443,8 @@ export default function Feed() {
                     <div className="mt-1 text-xs text-white/70">Unlocked clips are saved on this device.</div>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         const r = unlockFeedVideo({ feedId: active.id, cost: active.unlockCost || 5 });
                         if (!r.ok) {
                           showToast("error", "Not enough 💎.");
@@ -552,14 +476,14 @@ export default function Feed() {
               <div className="h-full min-h-0 overflow-auto pr-1">
                 <div className="space-y-3">
                   {clips.map((clip) => {
-                    const unlocked = Boolean(unlockedFeedVideos?.[clip.id]);
+                    const unlocked = Boolean(clip.free) || Boolean(unlockedFeedVideos?.[clip.id]);
                     const selected = selectedClipId === clip.id;
                     return (
                       <button
                         key={clip.id}
                         type="button"
                         onClick={() => {
-                          if (!unlocked) {
+                          if (!unlocked && !clip.free) {
                             const r = unlockFeedVideo({ feedId: clip.id, cost: 5 });
                             if (!r.ok) {
                               showToast("error", "Not enough 💎.");
@@ -604,7 +528,7 @@ export default function Feed() {
                             </div>
                           ) : (
                             <div className="absolute left-2 top-2 rounded-full bg-black/45 px-2 py-1 text-[11px] font-semibold text-white/85 backdrop-blur">
-                              {selected ? "Playing" : "Unlocked"}
+                              {selected ? "Playing" : clip.free ? "Free" : "Unlocked"}
                             </div>
                           )}
                         </div>
@@ -665,7 +589,7 @@ export default function Feed() {
                   Character
                   {activeTab === "character" ? <span className="absolute -bottom-0.5 left-0 right-0 h-0.5 bg-white" /> : null}
                 </button>
-                {active.hasShorts ? (
+                {characterShorts.length ? (
                   <button
                     type="button"
                     onClick={() => setActiveTab("shorts")}
@@ -702,40 +626,53 @@ export default function Feed() {
                     </div>
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={openShorts}
-                    className="group relative w-40 overflow-hidden rounded-3xl border border-white/10 bg-white/5"
-                  >
-                    <div className="aspect-[9/16] w-full bg-black">
-                      <img
-                        src={`/images/home/shorts-cover.png?v=${assetVersion}`}
-                        alt=""
-                        className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                      <div className="absolute inset-x-0 bottom-0 px-3 py-2 text-sm font-semibold">Watch now</div>
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                        <div className="rounded-full bg-white/90 px-3 py-2 text-xs font-semibold text-zinc-900">Play</div>
-                      </div>
-                    </div>
-                  </button>
+                  <div className="no-scrollbar -mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
+                    {characterShorts.map((d, i) => {
+                      const cover = `/images/home/shorts-cover${(i % 4) + 1}.png?v=${assetVersion}`;
+                      return (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => navigate(`/shorts/${d.id}`)}
+                          className="group relative w-40 flex-shrink-0 overflow-hidden rounded-3xl border border-white/10 bg-white/5"
+                        >
+                          <div className="aspect-[9/16] w-full bg-black">
+                            <img
+                              src={cover}
+                              alt={d.title}
+                              className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+                              onError={(e) => {
+                                e.currentTarget.src = `/images/home/shorts-cover.png?v=${assetVersion}`;
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                            <div className="absolute left-2 top-2 rounded-full bg-black/45 px-2 py-1 text-[11px] font-semibold text-white/85 backdrop-blur">
+                              {d.episodes} eps
+                            </div>
+                            <div className="absolute inset-x-0 bottom-0 px-3 py-2">
+                              <div className="truncate text-sm font-semibold text-white">{d.title}</div>
+                            </div>
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                              <div className="rounded-full bg-white/90 px-3 py-2 text-xs font-semibold text-zinc-900">Play</div>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             </div>
 
             <div ref={commentsWrapRef} className="mt-5 flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5">
               <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-                <div className="text-sm font-semibold">
-                  Comments <span className="text-white/60">{commentCount}</span>
-                </div>
+                <div className="text-sm font-semibold">Comments</div>
               </div>
 
               <div className="min-h-0 flex-1 overflow-auto px-5 py-4">
                 <div className="space-y-5">
                   {comments.map((c) => {
                     const likedByMe = !!commentLikes[c.id];
-                    const showReplies = !!expandedReplies[c.id];
                     return (
                       <div key={c.id} className="space-y-3">
                         <div className="flex gap-3">
@@ -743,7 +680,6 @@ export default function Feed() {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 text-xs text-white/70">
                               <span className="font-semibold text-white">{c.user.name}</span>
-                              <span>{formatTimeAgo(c.createdAt)}</span>
                             </div>
                             <div className="mt-1 text-sm text-white/85">{c.text}</div>
                             <div className="mt-2 flex items-center gap-4 text-xs text-white/60">
@@ -755,53 +691,9 @@ export default function Feed() {
                                 <Heart className="h-4 w-4" fill={likedByMe ? "currentColor" : "none"} />
                                 <span>{c.likes + (likedByMe ? 1 : 0)}</span>
                               </button>
-                              <button type="button" className="hover:text-white/85">
-                                Reply
-                              </button>
                             </div>
-                            {c.replies?.length ? (
-                              <button
-                                type="button"
-                                onClick={() => setExpandedReplies((prev) => ({ ...prev, [c.id]: !prev[c.id] }))}
-                                className="mt-3 text-xs font-semibold text-white/70 hover:text-white"
-                              >
-                                {c.replies.length} replies {showReplies ? "▲" : "▼"}
-                              </button>
-                            ) : null}
                           </div>
                         </div>
-
-                        {showReplies
-                          ? c.replies?.map((r) => {
-                              const replyKey = `${c.id}:${r.id}`;
-                              const likedReply = !!commentLikes[replyKey];
-                              return (
-                                <div key={r.id} className="ml-12 flex gap-3">
-                                  <img src={r.user.avatar} alt={r.user.name} className="h-8 w-8 rounded-full object-cover" />
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2 text-xs text-white/70">
-                                      <span className="font-semibold text-white">{r.user.name}</span>
-                                      <span>{formatTimeAgo(r.createdAt)}</span>
-                                    </div>
-                                    <div className="mt-1 text-sm text-white/85">{r.text}</div>
-                                    <div className="mt-2 flex items-center gap-4 text-xs text-white/60">
-                                      <button
-                                        type="button"
-                                        onClick={() => toggleCommentLike(replyKey)}
-                                        className={likedReply ? "inline-flex items-center gap-1 font-semibold text-red-500" : "inline-flex items-center gap-1 hover:text-white/85"}
-                                      >
-                                        <Heart className="h-4 w-4" fill={likedReply ? "currentColor" : "none"} />
-                                        <span>{r.likes + (likedReply ? 1 : 0)}</span>
-                                      </button>
-                                      <button type="button" className="hover:text-white/85">
-                                        Reply
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })
-                          : null}
                       </div>
                     );
                   })}

@@ -19,19 +19,51 @@ import { shortDramas } from "../data/mock.js";
 
 const buildAssistantReply = ({ characterName, userText }) => {
   const text = userText.trim();
-  if (!text) return "Tell me your English goal for today (speaking, grammar, vocabulary, writing).";
-  if (text.length <= 6) return `Nice. Use it in a full English sentence: “${text} …”`;
-  return `${characterName}: Great. I’ll correct your English, then give a better natural version + one quick practice question.`;
+  if (!text) {
+    return `*${characterName} smiles, waiting for your cue.*\nTell me your English goal for today (speaking, grammar, vocabulary, writing).`;
+  }
+  if (text.length <= 6) {
+    return `*${characterName} nods slowly.*\nNice. Use it in a full English sentence: “${text} …”\n\n*Then send it here and I’ll refine it.*`;
+  }
+  return `*${characterName} leans in, listening carefully.*\nGot it. I’ll correct your English first, then give a more natural version.\n\n*Reply with your next sentence and I’ll keep it flowing.*`;
+};
+
+const splitMixedReply = (raw) => {
+  const text = `${raw || ""}`;
+  if (!text) return [];
+  const out = [];
+  const re = /\*([^*]+)\*/g;
+  let last = 0;
+  let m = null;
+  while ((m = re.exec(text))) {
+    const before = text.slice(last, m.index);
+    if (before) out.push({ kind: "body", text: before });
+    const aside = m[1] || "";
+    if (aside) out.push({ kind: "aside", text: aside });
+    last = re.lastIndex;
+  }
+  const rest = text.slice(last);
+  if (rest) out.push({ kind: "body", text: rest });
+  return out;
 };
 
 const pickProfileBlocks = (characterId) => {
   const idx = Math.max(1, Number(`${characterId}`.replace(/\D/g, "")) || 1);
   const countries = ["USA", "Japan", "Korea", "France", "Canada", "Germany", "UK"];
   const personalities = ["Patient", "Clear", "Encouraging", "Direct", "Structured", "Playful"];
+  const personalityTagsByIdx = [
+    ["Warm", "Supportive", "Playful"],
+    ["Calm", "Precise", "Encouraging"],
+    ["Direct", "Fast", "Honest"],
+    ["Cheeky", "Soft", "Teasing"],
+    ["Structured", "Practical", "Clear"],
+  ];
+  const personality = personalities[idx % personalities.length];
+  const personalityTags = personalityTagsByIdx[idx % personalityTagsByIdx.length];
 
   return [
     { key: "country", label: "Country", value: countries[idx % countries.length], Icon: Flag },
-    { key: "personality", label: "Personality", value: personalities[idx % personalities.length], Icon: Sparkles },
+    { key: "personality", label: "Personality", value: personality, tags: personalityTags, Icon: Sparkles },
   ];
 };
 
@@ -81,6 +113,7 @@ export default function ChatRoom() {
   const aiVideoFallback = useMemo(() => `/videos/chat/ai-reply-01.mp4?v=${assetVersion}`, [assetVersion]);
 
   const quota = useMemo(() => getMediaRequestSummary({ freeLimit: 3 }), [getMediaRequestSummary, mediaRequests]);
+  const [freeExhaustedOpen, setFreeExhaustedOpen] = useState(false);
 
   const [mediaOpen, setMediaOpen] = useState(false);
   const [mediaItem, setMediaItem] = useState(null);
@@ -113,6 +146,7 @@ export default function ChatRoom() {
 
   const requestMedia = async (kind) => {
     if (!conversation) return;
+    const beforeFreeLeft = quota.freeLeft;
     const result = consumeMediaRequest({ freeLimit: 3, cost: 5 });
     if (!result.ok) {
       showToast("error", "Not enough 💎.");
@@ -136,9 +170,9 @@ export default function ChatRoom() {
           : [{ kind: "video", url: aiVideoSrc, fallbackUrl: aiVideoFallback, name: "ai-reply-01" }],
     });
     setTyping(false);
+    showToast("success", "Request sent.");
 
-    if (result.charged) showToast("success", `Request sent (-${result.cost} 💎).`);
-    else showToast("success", `Request sent (free).`);
+    if (beforeFreeLeft > 0 && result.freeLeft <= 0) setFreeExhaustedOpen(true);
   };
 
   const panelBlocks = useMemo(() => (character ? pickProfileBlocks(character.id) : []), [character?.id]);
@@ -235,6 +269,36 @@ export default function ChatRoom() {
         ) : null}
       </Modal>
 
+      <Modal
+        open={freeExhaustedOpen}
+        onClose={() => setFreeExhaustedOpen(false)}
+        title="Free requests used up"
+        className="max-w-md"
+      >
+        <div className="text-sm text-zinc-600">
+          Your 3 free requests are used up. To get more, please subscribe.
+        </div>
+        <div className="mt-5 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setFreeExhaustedOpen(false)}
+            className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setFreeExhaustedOpen(false);
+              navigate("/subscription");
+            }}
+            className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
+          >
+            Subscribe
+          </button>
+        </div>
+      </Modal>
+
       <div className="flex h-full min-h-0 flex-col lg:border-r lg:border-zinc-200">
         <div className="flex items-start justify-between gap-3 border-b border-zinc-200 px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
@@ -250,6 +314,7 @@ export default function ChatRoom() {
           {conversation.messages.map((m) => {
             const isUser = m.role === "user";
             const attachments = Array.isArray(m.attachments) ? m.attachments : [];
+            const mixed = !isUser && m.text ? splitMixedReply(m.text) : [];
             return (
               <div key={m.id} className={cn("flex", isUser ? "justify-end" : "justify-start")}>
                 {isUser ? (
@@ -300,7 +365,17 @@ export default function ChatRoom() {
                 ) : (
                   <div className="flex max-w-[78%] items-start gap-2">
                     <div className="rounded-2xl bg-zinc-100 px-4 py-3 text-sm leading-relaxed text-zinc-900">
-                      {m.text ? <div className="whitespace-pre-wrap">{m.text}</div> : null}
+                      {m.text ? (
+                        <div className="whitespace-pre-wrap">
+                          {mixed.length
+                            ? mixed.map((seg, idx) => (
+                                <span key={`${m.id}-seg-${idx}`} className={seg.kind === "aside" ? "text-zinc-500 italic" : ""}>
+                                  {seg.text}
+                                </span>
+                              ))
+                            : m.text}
+                        </div>
+                      ) : null}
                       {attachments.length ? (
                         <div className={cn(m.text ? "mt-2" : "", "space-y-2")}>
                           {attachments.map((a, idx) => (
@@ -405,9 +480,11 @@ export default function ChatRoom() {
                 </span>
               ) : null}
             </button>
-            <div className="ml-auto text-[11px] text-zinc-500">
-              Free requests left: <span className="font-semibold text-zinc-700">{quota.freeLeft}</span>/3
-            </div>
+            {quota.freeLeft > 0 ? (
+              <div className="ml-auto text-[11px] text-zinc-500">
+                Free requests left: <span className="font-semibold text-zinc-700">{quota.freeLeft}</span>/3
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-3 flex items-center gap-2">
@@ -500,7 +577,23 @@ export default function ChatRoom() {
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{b.label}</div>
-                              <div className="mt-1 break-words text-sm font-semibold leading-snug text-zinc-900">{b.value}</div>
+                              {b.key === "personality" ? (
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-900">
+                                    {b.value}
+                                  </span>
+                                  {(b.tags || []).slice(0, 3).map((tag) => (
+                                    <span
+                                      key={tag}
+                                      className="inline-flex items-center rounded-full border border-zinc-200 bg-white/70 px-3 py-1 text-xs font-semibold text-zinc-700"
+                                    >
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="mt-1 break-words text-sm font-semibold leading-snug text-zinc-900">{b.value}</div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -513,7 +606,6 @@ export default function ChatRoom() {
               <div className="p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm font-semibold text-zinc-900">{t(language, "chat_short_list_title")}</div>
-                  <div className="text-xs text-zinc-500">{t(language, "chat_short_list_hint")}</div>
                 </div>
 
                 <div className="mt-3 space-y-2">

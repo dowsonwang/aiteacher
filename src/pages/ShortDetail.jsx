@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Bookmark, ChevronLeft, Heart, Lock, Share2, X } from "lucide-react";
+import { Bookmark, ChevronLeft, Heart, Lock, Pause, Play, Share2, SkipForward, X } from "lucide-react";
 import DiamondIcon from "../components/DiamondIcon.jsx";
 import { shortDramas } from "../data/mock.js";
 import { cn } from "../lib/utils.js";
@@ -68,8 +68,18 @@ export default function ShortDetail() {
   useEffect(() => {
     setVideoSrc(preferredVideoSrc);
   }, [preferredVideoSrc]);
+  const videoRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [speedOpen, setSpeedOpen] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(false);
+  const speedOptions = useMemo(() => [1, 1.25, 1.5, 2], []);
 
   const [liked, setLiked] = useState(false);
+  const [likeDelta, setLikeDelta] = useState(0);
+  const [saveDelta, setSaveDelta] = useState(0);
   const [shareOpen, setShareOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
   const saved = useMemo(() => (Array.isArray(favoriteShorts) ? favoriteShorts.includes(drama.id) : false), [drama.id, favoriteShorts]);
@@ -79,6 +89,18 @@ export default function ShortDetail() {
     while (picked.length < 2) picked.push("Drama");
     return picked;
   }, [drama.tags]);
+
+  const baseLikeCount = useMemo(() => {
+    const seed = Math.max(1, Number(`${drama.id}`.replace(/\D/g, "")) || 1);
+    return 1200 + seed * 317;
+  }, [drama.id]);
+  const displayLikeCount = baseLikeCount + likeDelta;
+
+  const baseSaveCount = useMemo(() => {
+    const seed = Math.max(1, Number(`${drama.id}`.replace(/\D/g, "")) || 1);
+    return 320 + seed * 79;
+  }, [drama.id]);
+  const displaySaveCount = Math.max(0, baseSaveCount + saveDelta);
   useEffect(() => {
     if (!shareOpen) return;
     const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -100,12 +122,60 @@ export default function ShortDetail() {
     if (n === episode) return;
     setEpisode(n);
   };
+  const goNextEpisode = () => {
+    if (episode >= totalEpisodes) return;
+    goEpisode(episode + 1);
+  };
   const swipeTo = (direction) => {
     const now = Date.now();
     if (now - swipeGateRef.current < 320) return;
     swipeGateRef.current = now;
     goEpisode(episode + direction);
   };
+
+  const togglePlay = async () => {
+    if (locked) return;
+    const el = videoRef.current;
+    if (!el) return;
+    if (el.paused) {
+      const p = el.play();
+      if (p?.catch) p.catch(() => {});
+      setIsPlaying(true);
+      return;
+    }
+    el.pause();
+    setIsPlaying(false);
+  };
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    el.playbackRate = playbackRate;
+  }, [playbackRate, episode, videoSrc]);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    setCurrentTime(0);
+    setDuration(Number.isFinite(el.duration) ? el.duration : 0);
+    if (locked) {
+      el.pause();
+      setIsPlaying(false);
+      return;
+    }
+    const p = el.play();
+    if (p?.catch) p.catch(() => {});
+    setIsPlaying(true);
+  }, [episode, locked, videoSrc]);
+
+  useEffect(() => {
+    if (!speedOpen) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setSpeedOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [speedOpen]);
 
   return (
     <div className="mx-auto w-full max-w-6xl">
@@ -123,6 +193,11 @@ export default function ShortDetail() {
           <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-black shadow-sm">
             <div
               className="relative aspect-[9/16] w-full overscroll-contain"
+              onMouseEnter={() => setControlsVisible(true)}
+              onMouseLeave={() => {
+                setControlsVisible(false);
+                setSpeedOpen(false);
+              }}
               onWheel={(e) => {
                 if (Math.abs(e.deltaY) < 28) return;
                 e.preventDefault();
@@ -130,6 +205,7 @@ export default function ShortDetail() {
               }}
               onTouchStart={(e) => {
                 swipeStartYRef.current = e.touches?.[0]?.clientY ?? null;
+                setControlsVisible(true);
               }}
               onTouchEnd={(e) => {
                 const startY = swipeStartYRef.current;
@@ -143,17 +219,117 @@ export default function ShortDetail() {
             >
               <video
                 key={videoSrc}
+                ref={videoRef}
                 className="h-full w-full object-cover"
-                autoPlay
-                loop
                 muted
                 playsInline
                 controls={false}
                 src={videoSrc}
+                onLoadedMetadata={(e) => {
+                  const d = e.currentTarget.duration;
+                  setDuration(Number.isFinite(d) ? d : 0);
+                  e.currentTarget.playbackRate = playbackRate;
+                }}
+                onTimeUpdate={(e) => {
+                  setCurrentTime(e.currentTarget.currentTime || 0);
+                }}
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+                onEnded={() => setIsPlaying(false)}
                 onError={() => {
                   if (videoSrc !== fallbackVideoSrc) setVideoSrc(fallbackVideoSrc);
                 }}
               />
+
+              {!locked ? (
+                <div
+                  className={cn(
+                    "absolute inset-x-0 bottom-0 z-10 transition-opacity duration-150",
+                    controlsVisible ? "opacity-100" : "pointer-events-none opacity-0",
+                  )}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                >
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
+                  <div className="relative flex items-center gap-3 px-4 pb-4 pt-8">
+                    <button
+                      type="button"
+                      onClick={togglePlay}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-black/45 text-white backdrop-blur hover:bg-black/55"
+                      aria-label={isPlaying ? "Pause" : "Play"}
+                    >
+                      {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                    </button>
+
+                    <input
+                      type="range"
+                      min={0}
+                      max={Math.max(0, duration)}
+                      step={0.05}
+                      value={Math.min(Math.max(0, currentTime), Math.max(0, duration))}
+                      onChange={(e) => {
+                        const el = videoRef.current;
+                        if (!el) return;
+                        const next = Number(e.target.value) || 0;
+                        el.currentTime = next;
+                        setCurrentTime(next);
+                      }}
+                      className="h-2 w-full accent-white"
+                      aria-label="Progress"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={goNextEpisode}
+                      disabled={episode >= totalEpisodes}
+                      className={cn(
+                        "inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-black/45 text-white backdrop-blur",
+                        episode >= totalEpisodes ? "cursor-not-allowed opacity-40" : "hover:bg-black/55",
+                      )}
+                      aria-label="Next episode"
+                    >
+                      <SkipForward className="h-5 w-5" />
+                    </button>
+
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setSpeedOpen((v) => !v)}
+                        className="inline-flex h-10 items-center justify-center rounded-2xl bg-black/45 px-3 text-xs font-semibold text-white backdrop-blur hover:bg-black/55"
+                        aria-label="Speed"
+                      >
+                        {playbackRate === 1 ? "1x" : `${playbackRate}x`}
+                      </button>
+
+                      {speedOpen ? (
+                        <div className="absolute bottom-12 right-0 w-24 overflow-hidden rounded-2xl border border-white/15 bg-black/70 shadow-xl backdrop-blur">
+                          {speedOptions.filter((x) => x !== 1).map((rate) => (
+                            <button
+                              key={rate}
+                              type="button"
+                              onClick={() => {
+                                setPlaybackRate(rate);
+                                setSpeedOpen(false);
+                              }}
+                              className={cn(
+                                "w-full px-3 py-2 text-left text-xs font-semibold text-white/90 hover:bg-white/10",
+                                playbackRate === rate ? "bg-white/10" : "",
+                              )}
+                            >
+                              {rate}x
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
               {locked ? (
                 <div className="absolute inset-0 flex items-center justify-center bg-white/10 backdrop-blur-xl">
                   <div className="mx-6 w-full max-w-[320px] rounded-3xl border border-white/20 bg-black/35 px-5 py-5 text-center text-white shadow-2xl">
@@ -201,23 +377,12 @@ export default function ShortDetail() {
           <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <div className="text-xs font-semibold text-zinc-500">Short drama</div>
-                <div className="mt-1 text-2xl font-semibold text-zinc-900">{drama.title}</div>
+                <div className="text-2xl font-semibold text-zinc-900">{drama.title}</div>
                 <div className="mt-2 text-sm text-zinc-600">{drama.description}</div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">{drama.protagonist}</span>
                   <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">{workTags[0]}</span>
                   <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">{workTags[1]}</span>
-                </div>
-              </div>
-
-              <div className="shrink-0 text-right">
-                <div className="inline-flex items-center justify-end gap-1 text-xs font-semibold text-zinc-700">
-                  <DiamondIcon className="h-4 w-4" />
-                  <span>{diamonds.toLocaleString()}</span>
-                </div>
-                <div className="mt-1 text-xs text-zinc-500">
-                  Episode {episode} / {totalEpisodes}
                 </div>
               </div>
             </div>
@@ -226,7 +391,13 @@ export default function ShortDetail() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setLiked((v) => !v)}
+                  onClick={() =>
+                    setLiked((v) => {
+                      const next = !v;
+                      setLikeDelta((d) => d + (next ? 1 : -1));
+                      return next;
+                    })
+                  }
                   className={cn(
                     "inline-flex h-10 w-10 items-center justify-center rounded-2xl border",
                     liked ? "border-rose-200 bg-rose-50 text-rose-600" : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50",
@@ -235,9 +406,13 @@ export default function ShortDetail() {
                 >
                   <Heart className="h-4 w-4" />
                 </button>
+                <div className="min-w-[44px] text-xs font-semibold text-zinc-600">{displayLikeCount.toLocaleString()}</div>
                 <button
                   type="button"
-                  onClick={() => toggleFavoriteShort(drama.id)}
+                  onClick={() => {
+                    setSaveDelta((d) => d + (saved ? -1 : 1));
+                    toggleFavoriteShort(drama.id);
+                  }}
                   className={cn(
                     "inline-flex h-10 w-10 items-center justify-center rounded-2xl border",
                     saved ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50",
@@ -246,6 +421,7 @@ export default function ShortDetail() {
                 >
                   <Bookmark className="h-4 w-4" />
                 </button>
+                <div className="min-w-[44px] text-xs font-semibold text-zinc-600">{displaySaveCount.toLocaleString()}</div>
                 <button
                   type="button"
                   onClick={() => setShareOpen(true)}
@@ -254,10 +430,6 @@ export default function ShortDetail() {
                 >
                   <Share2 className="h-4 w-4" />
                 </button>
-              </div>
-
-              <div className="text-xs font-semibold text-zinc-500">
-                Free: 1–5 · Locked: 6–{totalEpisodes}
               </div>
             </div>
           </div>

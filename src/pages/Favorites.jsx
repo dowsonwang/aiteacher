@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ImmersiveCharacterCard from "../components/ImmersiveCharacterCard.jsx";
-import ShortCard from "../components/ShortCard.jsx";
 import { shortDramas } from "../data/mock.js";
 import { cn } from "../lib/utils.js";
 import { useAppStore } from "../stores/useAppStore.js";
@@ -25,6 +24,34 @@ export default function Favorites() {
   const [tab, setTab] = useState("shorts");
   const askedAuthRef = useRef(false);
   const gateImgSrc = useMemo(() => `/images/home/login.png?v=${Date.now().toString()}`, []);
+  const assetVersion = useMemo(() => Date.now().toString(), []);
+  const getShortsCoverSrc = (i) => {
+    const sources = [
+      "/images/home/shorts-cover.png",
+      "/images/home/shorts-cover1.png",
+      "/images/home/shorts-cover2.png",
+      "/images/home/shorts-cover3.png",
+      "/images/home/shorts-cover4.png",
+    ];
+    const src = sources[i] || sources[0];
+    return `${src}?v=${assetVersion}`;
+  };
+  const shortsVideoSrcForIndex = (i) => `/videos/feed/feed-0${(i % 4) + 1}.mp4?v=${assetVersion}`;
+  const shortsVideoRefs = useRef(new Map());
+  const [hoveredShortId, setHoveredShortId] = useState("");
+
+  useEffect(() => {
+    shortsVideoRefs.current.forEach((el, sid) => {
+      if (!el) return;
+      if (sid === hoveredShortId) {
+        const p = el.play();
+        if (p?.catch) p.catch(() => {});
+      } else {
+        el.pause();
+        el.currentTime = 0;
+      }
+    });
+  }, [hoveredShortId]);
 
   useEffect(() => {
     if (session.isLoggedIn) return;
@@ -122,9 +149,60 @@ export default function Favorites() {
         {tab === "shorts" ? (
           shortItems.length ? (
             <div className="flex flex-wrap gap-3">
-              {shortItems.map((d) => (
-                <ShortCard key={d.id} drama={d} />
-              ))}
+              {shortItems.map((d, i) => {
+                const isHover = hoveredShortId === d.id;
+                const coverSrc = getShortsCoverSrc(i);
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => navigate(`/shorts/${d.id}`)}
+                    onMouseEnter={() => setHoveredShortId(d.id)}
+                    onMouseLeave={() => setHoveredShortId((v) => (v === d.id ? "" : v))}
+                    className="group relative w-44 flex-shrink-0 overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm transition hover:shadow-md outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/40"
+                    aria-label={d.title}
+                  >
+                    <div className="relative aspect-[9/16] w-full overflow-hidden bg-black">
+                      <img
+                        src={coverSrc}
+                        alt=""
+                        className={cn(
+                          "absolute inset-0 h-full w-full object-cover transition-opacity duration-150",
+                          isHover ? "opacity-0" : "opacity-100",
+                        )}
+                        onError={(e) => {
+                          e.currentTarget.src = `/images/home/shorts-cover.png?v=${assetVersion}`;
+                        }}
+                      />
+                      <video
+                        ref={(el) => {
+                          if (!el) {
+                            shortsVideoRefs.current.delete(d.id);
+                            return;
+                          }
+                          shortsVideoRefs.current.set(d.id, el);
+                        }}
+                        src={shortsVideoSrcForIndex(i)}
+                        loop
+                        muted
+                        playsInline
+                        className={cn(
+                          "absolute inset-0 h-full w-full object-cover transition-opacity duration-150",
+                          isHover ? "opacity-100" : "opacity-0",
+                        )}
+                      />
+
+                      <div className="absolute left-2 top-2 rounded-full bg-black/45 px-2 py-1 text-[11px] font-semibold text-white/85 backdrop-blur">
+                        {d.episodes} eps
+                      </div>
+
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent px-3 py-2">
+                        <div className="truncate text-sm font-semibold text-white">{d.title}</div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           ) : (
             <div className="flex h-full min-h-[240px] items-center justify-center rounded-3xl border border-dashed border-zinc-200 bg-white text-sm font-semibold text-zinc-500">

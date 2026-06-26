@@ -46,7 +46,7 @@ const dictionaries = {
     chat_tab_shorts: "Shorts",
     chat_enter_live: "Enter Live",
     chat_story_title: "Worldbook",
-    chat_short_list_title: "Lesson series",
+    chat_short_list_title: "Featured shorts",
     chat_short_list_hint: "From this tutor",
     subscribe_title: "Choose a plan",
     subscribe_plan_month: "Monthly",

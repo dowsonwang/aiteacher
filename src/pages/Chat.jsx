@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useNavigate, useParams } from "react-router-dom";
 import { cn } from "../lib/utils.js";
 import { t } from "../i18n/i18n.js";
+import Modal from "../components/Modal.jsx";
 import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
 
@@ -13,9 +14,12 @@ export default function Chat() {
   const openAuth = useUIStore((s) => s.openAuth);
   const getAllCharacters = useAppStore((s) => s.getAllCharacters);
   const conversations = useAppStore((s) => s.conversations);
+  const deleteConversation = useAppStore((s) => s.deleteConversation);
 
   const characters = getAllCharacters();
   const prompted = useRef(false);
+  const [contextMenu, setContextMenu] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState("");
 
   useEffect(() => {
     if (session.isLoggedIn) return;
@@ -44,6 +48,15 @@ export default function Chat() {
       }),
     [characters, conversations],
   );
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setContextMenu(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [contextMenu]);
 
   if (!session.isLoggedIn) {
     return (
@@ -89,6 +102,60 @@ export default function Chat() {
 
   return (
     <div className="-mx-6 -my-6 relative h-[calc(100dvh-56px)] w-full overflow-hidden p-3">
+      <Modal open={Boolean(deleteConfirmId)} onClose={() => setDeleteConfirmId("")} title="Delete chat?" className="max-w-md">
+        <div className="text-sm text-zinc-600">This will delete this chat history on this device.</div>
+        <div className="mt-5 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setDeleteConfirmId("")}
+            className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const idToDelete = deleteConfirmId;
+              setDeleteConfirmId("");
+              deleteConversation(idToDelete);
+              if (id === idToDelete) {
+                const nextId = conversations.filter((c) => c.id !== idToDelete)[0]?.id || "";
+                navigate(nextId ? `/chat/${nextId}` : "/chat", { replace: true });
+              }
+            }}
+            className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+          >
+            Delete
+          </button>
+        </div>
+      </Modal>
+
+      {contextMenu ? (
+        <div
+          className="fixed inset-0 z-[70]"
+          onMouseDown={() => {
+            setContextMenu(null);
+          }}
+        >
+          <div
+            className="fixed w-52 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setContextMenu(null);
+                setDeleteConfirmId(contextMenu.conversationId);
+              }}
+              className="w-full px-4 py-3 text-left text-sm font-semibold text-red-600 hover:bg-zinc-50"
+            >
+              Delete chat history
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex h-full min-h-0 gap-3 overflow-hidden">
         <div className="flex h-full w-16 min-h-0 flex-col items-center overflow-auto py-4">
           {conversations.length ? (
@@ -98,6 +165,10 @@ export default function Chat() {
                   key={conversation.id}
                   type="button"
                   onClick={() => navigate(`/chat/${conversation.id}`)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setContextMenu({ x: e.clientX, y: e.clientY, conversationId: conversation.id });
+                  }}
                   className="flex h-12 w-12 items-center justify-center"
                   aria-label={character?.name || "Chat"}
                 >

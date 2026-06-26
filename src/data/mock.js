@@ -284,6 +284,32 @@ export const shortDramas = [
     ),
   },
   {
+    id: "s11",
+    title: "Grammar Detective",
+    episodes: 9,
+    protagonist: "Su",
+    characterId: "c2",
+    tags: ["Grammar", "Correction"],
+    description: "Spot the mistake, fix it fast, and learn the rule behind it.",
+    coverUrl: imageUrl(
+      "Cinematic vertical poster still, warm classroom at golden hour, chalkboard, soft film grain, high quality, 9:16, no text",
+      "portrait_16_9",
+    ),
+  },
+  {
+    id: "s12",
+    title: "Rewrite Like a Native",
+    episodes: 7,
+    protagonist: "Su",
+    characterId: "c2",
+    tags: ["Writing", "Style"],
+    description: "Turn stiff sentences into clean, natural English with quick rewrites.",
+    coverUrl: imageUrl(
+      "Cinematic vertical poster still, minimal desk lamp and notebook, moody shadows, editorial style, high quality, 9:16, no text",
+      "portrait_16_9",
+    ),
+  },
+  {
     id: "s3",
     title: "Travel English",
     episodes: 10,

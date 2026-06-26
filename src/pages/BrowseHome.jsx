@@ -1,11 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import HomeFooter from "../components/HomeFooter.jsx";
 import ImmersiveCharacterCard from "../components/ImmersiveCharacterCard.jsx";
 import LiveStreamCard from "../components/LiveStreamCard.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
-import ShortCard from "../components/ShortCard.jsx";
-import { ChevronDown, Compass, Film, Pause, Play, Volume2, VolumeX, Wand2 } from "lucide-react";
+import { ChevronDown, Compass, Film, Wand2 } from "lucide-react";
 import { cn } from "../lib/utils.js";
 import { liveHosts, shortDramas } from "../data/mock.js";
 import { useAppStore } from "../stores/useAppStore.js";
@@ -76,8 +75,7 @@ export default function BrowseHome() {
   );
   const cardCount = 10;
   const showLive = false;
-  const featuredDrama = shortDramas[0];
-  const featuredVideoSrc = `/videos/feed/feed-02.mp4?v=${assetVersion}`;
+  const shortsVideoSrcForIndex = (i) => `/videos/feed/feed-0${(i % 4) + 1}.mp4?v=${assetVersion}`;
   const heroLinks = useMemo(
     () => [
       {
@@ -113,9 +111,21 @@ export default function BrowseHome() {
     ],
     [],
   );
-  const featuredVideoRef = useRef(null);
-  const [featuredMuted, setFeaturedMuted] = useState(true);
-  const [featuredPaused, setFeaturedPaused] = useState(false);
+  const shortsVideoRefs = useRef(new Map());
+  const [hoveredShortId, setHoveredShortId] = useState("");
+
+  useEffect(() => {
+    shortsVideoRefs.current.forEach((el, id) => {
+      if (!el) return;
+      if (id === hoveredShortId) {
+        const p = el.play();
+        if (p?.catch) p.catch(() => {});
+      } else {
+        el.pause();
+        el.currentTime = 0;
+      }
+    });
+  }, [hoveredShortId]);
 
   return (
     <div className="space-y-8">
@@ -170,70 +180,57 @@ export default function BrowseHome() {
           </div>
 
           <div className="no-scrollbar mt-5 flex min-h-0 flex-1 gap-3 overflow-x-auto pb-2">
-            {featuredDrama ? (
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => navigate(`/shorts/${featuredDrama.id}`)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") navigate(`/shorts/${featuredDrama.id}`);
-                }}
-                className="group relative w-44 flex-shrink-0 overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm transition hover:scale-[1.03] hover:shadow-md outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/40"
-              >
-                <div className="aspect-[9/16] w-full overflow-hidden bg-black">
-                  <video
-                    ref={featuredVideoRef}
-                    src={featuredVideoSrc}
-                    autoPlay
-                    loop
-                    muted={featuredMuted}
-                    playsInline
-                    className="absolute inset-0 h-full w-full object-cover"
-                    onPlay={() => setFeaturedPaused(false)}
-                    onPause={() => setFeaturedPaused(true)}
-                  />
-                </div>
-                <div className="absolute inset-0 bg-black/0 transition group-hover:bg-black/20" />
-                <div className="absolute inset-0 opacity-0 transition group-hover:opacity-100">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const el = featuredVideoRef.current;
-                      if (!el) return;
-                      if (el.paused) el.play();
-                      else el.pause();
-                    }}
-                    className="absolute left-1/2 top-1/2 inline-flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-2xl bg-white/15 text-white backdrop-blur hover:bg-white/20"
-                  >
-                    {featuredPaused ? <Play className="h-5 w-5" /> : <Pause className="h-5 w-5" />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setFeaturedMuted((v) => !v);
-                    }}
-                    className="absolute right-3 top-14 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15 text-white backdrop-blur hover:bg-white/20"
-                  >
-                    {featuredMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
-            ) : null}
+            {shortDramas.slice(0, cardCount).map((d, i) => {
+              const isHover = hoveredShortId === d.id;
+              const coverSrc = getShortsCoverSrc(i);
+              return (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => navigate(`/shorts/${d.id}`)}
+                  onMouseEnter={() => setHoveredShortId(d.id)}
+                  onMouseLeave={() => setHoveredShortId((v) => (v === d.id ? "" : v))}
+                  className="group relative w-44 flex-shrink-0 overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm transition hover:shadow-md outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/40"
+                  aria-label={d.title}
+                >
+                  <div className="relative aspect-[9/16] w-full overflow-hidden bg-black">
+                    <img
+                      src={coverSrc}
+                      alt=""
+                      className={cn(
+                        "absolute inset-0 h-full w-full object-cover transition-opacity duration-150",
+                        isHover ? "opacity-0" : "opacity-100",
+                      )}
+                    />
+                    <video
+                      ref={(el) => {
+                        if (!el) {
+                          shortsVideoRefs.current.delete(d.id);
+                          return;
+                        }
+                        shortsVideoRefs.current.set(d.id, el);
+                      }}
+                      src={shortsVideoSrcForIndex(i)}
+                      loop
+                      muted
+                      playsInline
+                      className={cn(
+                        "absolute inset-0 h-full w-full object-cover transition-opacity duration-150",
+                        isHover ? "opacity-100" : "opacity-0",
+                      )}
+                    />
 
-            {shortDramas.slice(1, cardCount).map((d, i) => (
-              <ShortCard
-                key={d.id}
-                drama={d}
-                coverSrc={getShortsCoverSrc(i + 1)}
-                showProtagonistTag={false}
-                size="lg"
-                protagonistAvatarUrl={characters.find((c) => c.id === d.characterId)?.avatarUrl}
-              />
-            ))}
+                    <div className="absolute left-2 top-2 rounded-full bg-black/45 px-2 py-1 text-[11px] font-semibold text-white/85 backdrop-blur">
+                      {d.episodes} eps
+                    </div>
+
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent px-3 py-2">
+                      <div className="truncate text-sm font-semibold text-white">{d.title}</div>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </section>
       </section>
@@ -275,9 +272,6 @@ export default function BrowseHome() {
               ))}
             </div>
           </div>
-          <button type="button" onClick={() => navigate("/browse")} className="text-sm font-medium text-zinc-600 hover:text-zinc-900">
-            View all →
-          </button>
         </div>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {displayCharacters.slice(0, 24).map((c) => (
@@ -311,7 +305,6 @@ export default function BrowseHome() {
                     <div className="flex items-center justify-between gap-4 px-6 py-5">
                       <div className="text-sm font-semibold text-zinc-900">{item.q}</div>
                       <div className="flex items-center gap-3">
-                        <div className="text-xs font-semibold text-zinc-500">{isOpen ? "Hide" : "View"}</div>
                         <ChevronDown className={cn("h-4 w-4 text-zinc-500 transition", isOpen ? "rotate-180" : "")} />
                       </div>
                     </div>

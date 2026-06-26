@@ -4,12 +4,6 @@ import { characters as seedCharacters } from "../data/mock.js";
 
 const generateId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
-const localDateKey = () => {
-  const d = new Date();
-  const pad = (n) => `${n}`.padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
-
 const ensureConversation = (state, characterId, allCharacters) => {
   const existing = state.conversations.find((c) => c.characterId === characterId);
   if (existing) return existing.id;
@@ -48,7 +42,7 @@ export const useAppStore = create(
       },
       createdCharacters: [],
       conversations: [],
-      mediaRequests: { dateKey: null, used: 0 },
+      mediaRequests: { used: 0 },
       unlockedShortEpisodes: {},
       unlockedFeedVideos: {},
       favoriteShorts: ["s1", "s2"],
@@ -69,7 +63,7 @@ export const useAppStore = create(
           session: { isLoggedIn: false, displayName: "", avatarUrl: "", email: "", provider: "" },
           subscription: { planId: null, status: "none", renew: true, expiresAt: null },
           diamonds: 0,
-          mediaRequests: { dateKey: null, used: 0 },
+          mediaRequests: { used: 0 },
         }),
 
       updateSessionProfile: ({ displayName, avatarUrl }) =>
@@ -200,31 +194,36 @@ export const useAppStore = create(
         return result.id;
       },
 
+      deleteConversation: (conversationId) =>
+        set((state) => ({
+          conversations: state.conversations.filter((c) => c.id !== conversationId),
+        })),
+
       consumeMediaRequest: ({ freeLimit = 3, cost = 5 } = {}) => {
-        const key = localDateKey();
         const state = get();
-        const current = state.mediaRequests || { dateKey: null, used: 0 };
-        const normalized = current.dateKey === key ? current : { dateKey: key, used: 0 };
-        const isFree = normalized.used < Math.max(0, Number(freeLimit) || 0);
+        const current = state.mediaRequests || { used: 0 };
+        const used = Math.max(0, Number(current.used) || 0);
+        const limit = Math.max(0, Number(freeLimit) || 0);
+        const freeLeft = Math.max(0, limit - used);
         const charge = Math.max(0, Number(cost) || 0);
+        const isFree = freeLeft > 0;
 
         if (!isFree && charge) {
           const ok = state.spendDiamonds(charge);
-          if (!ok) return { ok: false, reason: "diamonds", charged: false, cost: charge };
+          if (!ok) return { ok: false, reason: "diamonds", charged: false, cost: charge, freeLeft: 0 };
         }
 
-        const nextUsed = normalized.used + 1;
-        set({ mediaRequests: { dateKey: key, used: nextUsed } });
-        const freeLeft = Math.max(0, Math.max(0, Number(freeLimit) || 0) - nextUsed);
-        return { ok: true, charged: !isFree, cost: !isFree ? charge : 0, freeLeft };
+        const nextUsed = used + 1;
+        set({ mediaRequests: { ...current, used: nextUsed } });
+        return { ok: true, charged: !isFree, cost: !isFree ? charge : 0, freeLeft: Math.max(0, limit - nextUsed) };
       },
 
       getMediaRequestSummary: ({ freeLimit = 3 } = {}) => {
-        const key = localDateKey();
-        const current = get().mediaRequests || { dateKey: null, used: 0 };
-        const normalized = current.dateKey === key ? current : { dateKey: key, used: 0 };
-        const freeLeft = Math.max(0, Math.max(0, Number(freeLimit) || 0) - normalized.used);
-        return { dateKey: key, used: normalized.used, freeLeft };
+        const current = get().mediaRequests || { used: 0 };
+        const used = Math.max(0, Number(current.used) || 0);
+        const limit = Math.max(0, Number(freeLimit) || 0);
+        const freeLeft = Math.max(0, limit - used);
+        return { used, freeLeft };
       },
 
       sendMessage: ({ conversationId, text = "", attachments = [] }) => {
