@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import AuthModal from "../components/AuthModal.jsx";
 import LanguageModal from "../components/LanguageModal.jsx";
+import ShareModal from "../components/ShareModal.jsx";
 import Sidebar from "../components/Sidebar.jsx";
 import TopBar from "../components/TopBar.jsx";
 import { cn } from "../lib/utils.js";
@@ -30,6 +31,7 @@ export default function AppShell() {
       </div>
       <AuthModal />
       <LanguageModal />
+      <ShareModal />
     </div>
   );
 }

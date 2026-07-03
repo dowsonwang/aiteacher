@@ -1,606 +1,484 @@
-# 产品交互说明（基于 Demo）— Heartbits ai
+# 产品交互说明（基于 Demo，最新版）— Heartbits ai
 
-## 0. 这份文档写给谁
+## 0. 适用范围
 
-给开发与 AI 开发：你可以把它当成“交互规格”。重点回答：
+这份文档写给开发与 AI 开发，把 Demo 当作“可执行交互规格”来复刻。重点回答：
 
 - 用户在每个页面能看到什么
 - 点哪里会去哪里
-- 点了之后页面有什么反馈/状态变化
-- 空状态/未登录/不足额度时怎么表现
+- 点击/hover 后会出现什么反馈与状态变化
+- 未登录、额度不足、资源缺失时怎么表现
 
-备注：本 Demo 中的登录、订阅支付、AI 能力、内容推荐等均为本地 Mock；但交互逻辑与状态变化可直接迁移到真实产品。
+本次重写只覆盖当前 Demo 的最新实现，且**不包含**：
 
-## 1. 全局规则（所有页面通用）
+- 创建人物模块（/create…）
+- 订阅/订阅管理模块（/subscribe、/subscription）
 
-### 1.1 导航结构
+> 备注：Demo 中的登录、支付、内容与 AI 能力均为本地 Mock；交互与状态机可迁移到真实产品。
 
-左侧侧边栏常驻入口：
+## 1. 信息架构（路由）
 
-- Home（主页）/browse
-- Discover（发现）/feed
-- Shorts（短剧）/shorts
-- Create（创建人物）/create
-- Chat（聊天）/chat
-- Favorites（收藏）/favorites
-- Subscription（订阅）/subscribe
+路由入口来自 [App.jsx](file:///Users/kexuan/Desktop/AI对话项目/src/App.jsx)：
 
-### 1.2 登录触发（Login Gate）
+- /browse：Home
+- /feed：Discover
+- /shorts：Shorts 列表
+- /shorts/:id：短剧播放页
+- /chat：Chat 入口（左侧会话列 + 右侧内容）
+- /chat/:id：ChatRoom 会话详情
+- /favorites：Favorites
+- /account：Account Center
 
-当用户未登录时：
+## 2. 核心数据概念（字段建议）
 
-- 点击某些需要登录的功能，会弹出登录弹窗（Login Modal）
-- 登录成功后，会自动回跳到触发登录前的目标页面（例如 /favorites、/chat/:id、/subscribe）
+### 2.1 Character（角色）
 
-### 1.3 顶部栏（Top bar）
+来源：`seedCharacters`（mock）+ `createdCharacters`（用户创建）合并，详见 [useAppStore.js](file:///Users/kexuan/Desktop/AI对话项目/src/stores/useAppStore.js) 与 [mock.js](file:///Users/kexuan/Desktop/AI对话项目/src/data/mock.js)。
 
-右上角有订阅入口按钮（Subscription）：
+- `character.id: string` — 角色唯一标识（如 `c1`）；用于：Discover/Shorts/Chat 等页面的“角色关联”、会话绑定 `conversation.characterId`、收藏 `favoriteCharacters[]`
+- `character.name: string` — 角色显示名；用于：人物卡标题、ChatRoom 顶部标题、Discover 右侧角色信息
+- `character.age: number` — 年龄；用于：人物卡/ChatRoom Profile 中展示（可选信息）
+- `character.bio: string` — 角色简介；用于：人物卡/Discover 右侧简介/ChatRoom Profile 简介
+- `character.starter: string` — 会话开场白；用于：首次创建会话时的 assistant 第一条消息
+- `character.avatarUrl: string` — 方形头像；用于：Chat 左侧会话头像、ChatRoom 顶部头像、Discover/Shorts 列表的头像等
+- `character.heroUrl: string` — 人物大图；用于：ChatRoom Profile tab 的大图、人物卡主图（优先）
+- `character.fallbackUrl: string` — 大图加载失败兜底；用于：Profile 大图 onError fallback，避免空白
+- `character.tags: string[]` — 角色标签（文本）；用于：ChatRoom 顶部副标题（可选）
+- `character.kind: "female" | "male" | "anime" | undefined` — 角色类型；用于：Home Characters 的筛选、All Characters（已移除二级页）筛选逻辑
 
-- 未订阅：显示订阅按钮文案
-- 已订阅：显示当前计划 + 钻石余额（💎）
+### 2.2 Conversation / Message（会话与消息）
 
-右上角 Profile/Account 菜单：
+来源：[useAppStore.js](file:///Users/kexuan/Desktop/AI对话项目/src/stores/useAppStore.js)
 
-- 未登录：显示 Login 按钮，点击弹登录
-- 已登录：显示用户头像与“Profile”按钮，点开下拉菜单：
-  - Account Center：进入 /account
-  - Logout：退出登录（Demo 为本地态）
+- `conversation.id: string` — 会话唯一标识；用于：路由 `/chat/:id`、Chat 左侧列表选中态、删除会话
+- `conversation.characterId: string` — 会话绑定角色；用于：通过会话找到对应角色信息（头像、名字、Profile）
+- `conversation.updatedAt: number` — 最近更新时间；用于：会话列表排序（最新在前）
+- `conversation.messages: Message[]` — 消息列表；用于：ChatRoom 中渲染气泡与滚动到底部
 
-## 2. 页面级交互说明
+`Message`：
+- `message.id: string` — 消息唯一标识；用于：React 渲染 key
+- `message.role: "user" | "assistant"` — 消息归属；用于：决定气泡左右/颜色（用户右侧深色，AI 左侧浅色）
+- `message.text: string` — 文本正文；用于：ChatRoom 文本渲染；AI 支持“旁白/正文混排”
+- `message.attachments?: Attachment[]` — 附件数组；用于：AI 返回图片/视频、用户发送文件（Demo 有结构）
+- `message.createdAt: number` — 时间戳；用于：排序/扩展（当前 UI 不展示时间）
 
-### 2.1 Home（/browse）
+`Attachment`：
+- `attachment.kind: "image" | "video" | "file"` — 附件类型；用于：决定渲染组件（图片/视频预览、文件条目）
+- `attachment.url: string` — 资源地址；用于：预览与播放
+- `attachment.fallbackUrl?: string` — 资源兜底地址；用于：加载失败时切换 fallback
+- `attachment.name?: string` — 展示名；用于：文件/视频标题（可选）
 
-页面结构（顶部核心区）：
+### 2.3 ShortDrama（短剧系列）
 
-- 左：头部标题 + 一段介绍文案 + 3 个入口按钮
-  - 入口按钮：Shorts / Discover / Create
-- 右：Shorts 模块（横向可滑动的一排短剧卡）
-  - 第 1 张：正在播放短剧（仅播放画面；hover 才出现 Pause/Play 与 Mute/Unmute）
-  - 后续卡片：短剧封面卡，展示集数标签（例如 “8 eps”）、底部剧名与主演头像
+来源：[mock.js](file:///Users/kexuan/Desktop/AI对话项目/src/data/mock.js)
 
-数据需求（页面需要哪些数据 / 字段名建议）：
+- `shortDrama.id: string` — 短剧系列唯一标识（如 `s2`）；用于：路由 `/shorts/:id`、收藏 `favoriteShorts[]`
+- `shortDrama.title: string` — 短剧标题；用于：Home/Favorites 卡片标题、ShortDetail 标题
+- `shortDrama.description: string` — 短剧简介；用于：ShortDetail 右侧描述
+- `shortDrama.episodes: number` — 总集数；用于：ShortDetail 集数网格（1..N）、卡片左上 `x eps`
+- `shortDrama.characterId: string` — 关联角色；用于：Shorts 列表页按角色展示系列、Discover/ChatRoom 的“参演短剧/Featured shorts”关联
+- `shortDrama.protagonist: string` — 主演名；用于：ShortDetail 标签之一（pill）
+- `shortDrama.tags: string[]` — 短剧标签；用于：ShortDetail 右侧标签展示（取 2 个）
+- `shortDrama.coverUrl: string` — 默认封面（Demo 有）；用于：Shorts 列表页的小封面、以及兜底；但 Home/Favorites 统一覆盖为本地 `/images/home/shorts-cover*.png`
 
-- 入口按钮（3 个）
-  - `entry.label`：按钮文案（Shorts / Discover / Create）
-  - `entry.href`：点击跳转路由（/shorts、/feed、/create）
-  - `entry.coverUrl`：按钮背景图（可选，用于质感卡片）
-  - `entry.icon`：按钮图标（可选）
-- Shorts 模块（横滑卡片）
-  - `shortDrama.id`：短剧 id（用于跳转 /shorts/:id）
-  - `shortDrama.title`：短剧标题（卡片底部展示）
-  - `shortDrama.episodes`：总集数（卡片左上 “x eps”）
-  - `shortDrama.coverUrl`：9:16 封面图（若使用固定封面也可用 `shortDrama.coverSrc` 覆盖）
-  - `shortDrama.characterId`：关联角色 id（用于拿主演头像）
-  - `character.avatarUrl`：主演头像（卡片底部小圆头像）
-  - `featured.videoSrc`：正在播放短剧的视频源（Demo 为固定资源；真实产品可来自短剧资源表）
-- Characters 模块（人物卡片网格）
-  - `character.id`：角色 id（点击卡片 → 创建/打开会话）
-  - `character.name`：角色名（卡片底部展示）
-  - `character.age`：年龄（卡片右下展示，可选）
-  - `character.bio`：角色介绍文案（卡片底部一行/hover 详情）
-  - `character.heroUrl` / `character.photoUrl` / `character.avatarUrl`：人物大图（卡片主图，优先 hero）
-  - `character.fallbackUrl`：图片兜底（可选）
-  - `character.kind`：类型筛选（female / male / anime）
-- FAQ 模块
-  - `faqItem.q`：问题
-  - `faqItem.a`：答案
+### 2.4 Unlock / Favorites（解锁与收藏，本地 persist）
 
-关键交互：
+来源：[useAppStore.js](file:///Users/kexuan/Desktop/AI对话项目/src/stores/useAppStore.js)
 
-- 点左侧 3 个入口按钮：
-  - Shorts → 跳转 /shorts
-  - Discover → 跳转 /feed
-  - Create → 跳转 /create
-- Shorts 模块右上角 “View all →”：
-  - 跳转 /shorts
-- Shorts 横滑：
-  - 可水平滑动浏览更多卡片（滚动条默认隐藏）
-- 点任意短剧卡：
-  - 跳转到对应短剧详情页 /shorts/:id（可能附带 ep 查询参数）
+- `unlockedFeedVideos: Record<string, boolean>` — Discover clip 的解锁表（key 为 `clip.id`）；用于：决定 clip 是否可点/是否可播放、是否显示锁定态
+- `unlockedShortEpisodes: Record<dramaId, Record<episodeNumber, boolean>>` — ShortDetail 的解锁表；用于：决定某剧某集是否锁定、集数按钮是否显示锁 icon
+- `favoriteShorts: string[]` — 收藏的短剧 id 列表；用于：ShortDetail 书签状态、Favorites → Shorts tab 列表数据源
+- `favoriteCharacters: string[]` — 收藏的角色 id 列表；用于：Favorites → Characters tab 列表数据源
 
-### 2.2 Discover（/feed）
+### 2.5 Free Requests（Request Image/Video 的免费次数）
 
-页面结构：
+来源：[useAppStore.js](file:///Users/kexuan/Desktop/AI对话项目/src/stores/useAppStore.js) 与 [ChatRoom.jsx](file:///Users/kexuan/Desktop/AI对话项目/src/pages/ChatRoom.jsx)
 
-- 左侧：竖屏 9:16 主视频（类似短视频 feed）
-- 右侧：角色信息/操作区 + 评论区（含输入框）
-- 桌面端右侧还有一列预览 clip（可点击解锁并切换）
+- `mediaRequests.used: number` — 已消耗 Request 次数（账号维度，Demo 为本地 persist）；用于：计算 `freeLeft`
+- `freeLimit = 3` — 免费上限；用于：前 3 次不扣钻
+- `cost = 5` — 超出免费后单次成本（💎）；用于：第 4 次起每次请求扣 5
+- “用完提示弹窗” — 当免费次数从 `>0` 变为 `0` 的那一次弹窗；用于：提醒订阅但不阻止继续付费请求
 
-数据需求（页面需要哪些数据 / 字段名建议）：
+### 2.6 Diamonds（钻石余额）
 
-- Feed 主列表（每条一组数据）
-  - `feedItem.id`：条目 id（用于解锁状态、分享链接、路由 query）
-  - `feedItem.videoSrc`：主视频源
-  - `feedItem.coverUrl`：封面图（用于 clip/预览图，可选）
-  - `feedItem.username`：发布者/账号名（展示用）
-  - `feedItem.caption`：文案（展示用）
-  - `feedItem.tags[]`：标签数组（展示用）
-  - `feedItem.characterId`：关联角色（用于右侧角色信息）
-  - `feedItem.likeCount` / `feedItem.shareCount`：计数（展示用）
-  - `feedItem.hasShorts`：是否有关联短剧入口
-  - `feedItem.shortId`：关联短剧 id（hasShorts=true 时用于跳转 /shorts/:id）
-  - `feedItem.requiresUnlock`：是否需要解锁
-  - `feedItem.unlockCost`：解锁成本（💎）
-- 角色信息（右侧面板）
-  - `character.id`
-  - `character.name`
-  - `character.avatarUrl`
-  - `character.age`（可选）
-  - `character.bio`
-- 解锁与资产
-  - `wallet.diamonds`：当前 💎 余额
-  - `unlockedFeedVideos[feedId] = true/false`：解锁状态（应账号维度）
-- 评论（右侧评论区）
-  - `comment.id`
-  - `comment.user.name`
-  - `comment.user.avatar`
-  - `comment.createdAt`
-  - `comment.text`
-  - `comment.likes`
-  - `comment.replies[]`：回复数组（同结构）
+来源：[useAppStore.js](file:///Users/kexuan/Desktop/AI对话项目/src/stores/useAppStore.js)
 
-关键交互（主视频）：
+- `diamonds: number` — 当前账号可用钻石余额（Demo 为本地 persist）；用于：
+  - Discover：解锁付费 clip（每次 5 💎）
+  - Shorts 播放页：解锁 6+ 集（每集 5 💎）
+  - ChatRoom：免费次数用完后 Request Image/Video 每次扣 5 💎
+  - 顶部栏（TopBar）：订阅状态下会展示计划与钻石余额（订阅模块本身不在本文档范围）
 
-- 鼠标滚轮/键盘上下键：
-  - 切换上一条/下一条 feed 内容
+## 3. 全局通用规则
+
+### 3.1 Login Gate（未登录拦截）
+
+- 未登录访问 Chat / Favorites 等页面，会触发登录弹窗或引导登录
+- 用户在未登录时触发某些动作（如发评论、Start chat、收藏等）：
+  - 弹登录
+  - 登录成功后回到原目标页面或完成“待提交动作”（例如：评论补发）
+
+### 3.2 文案/展示禁令（已在 Demo 统一）
+
+- Chat 页不展示钻石余额（输入框上方仅展示 `Free requests left: x/3`，且当 x=0 时隐藏这行）
+
+## 4. 页面级交互说明
+
+### 4.1 Home（/browse）
+
+#### 4.1.1 模块结构
+
+- 顶部左侧：品牌文案区 + 3 个入口按钮（Shorts / Discover / Create）
+- 顶部右侧：Shorts 横滑卡片列表（9:16）
+- 下方：Characters（带类型筛选）+ FAQ + SFW 宣言文案
+
+#### 4.1.1A 入口按钮（左侧 3 个）
+
+- 点击 Shorts：
+  - 跳转到 `/shorts`
+  - 页面效果：进入 Shorts 列表页，展示各短剧系列与 Ep 预览卡
+- 点击 Discover：
+  - 跳转到 `/feed`
+  - 页面效果：进入 Discover，默认展示第一个 feed 项并自动播放其“免费 clip”
+- 点击 Create：
+  - 跳转到 `/create`
+  - 页面效果：进入创建人物流程（该模块不在本文档范围）
+
+#### 4.1.2 Shorts 卡片（Home 右侧横滑）
+
+数据字段：
+- `shortDrama.id`
+- `shortDrama.title`
+- `shortDrama.episodes`
+- 封面：优先使用本地 `/images/home/shorts-cover*.png`
+- hover 预览视频：Demo 使用 `/videos/feed/feed-0X.mp4`
+
+交互：
+- hover 到某张卡：
+  - 效果：封面淡出、视频预览淡入并开始播放（muted）
+  - 鼠标移出：视频暂停并回到 0s，封面恢复显示
+- 点击任意短剧卡：
+  - 跳转到 `/shorts/:id`
+  - 页面效果：进入短剧播放页，默认播放第 1 集；若 URL 带 `?ep=` 则从指定集开始
+- 点击右上角 “View all →”：
+  - 跳转到 `/shorts`
+
+#### 4.1.3 Characters（人物网格）
+
+数据字段：
+- `character.id / name / age / bio / heroUrl / avatarUrl / kind`
+
+交互：
+- 点击类型筛选：Female / Anime / Male
+  - 效果：只筛选当前类型的角色卡片列表（本地筛选，不请求后端）
+- 点击某个角色卡：
+  - 效果 1：若该角色没有会话，则创建新会话；若已有会话，则复用原会话
+  - 效果 2：跳转到 `/chat/:conversationId` 进入聊天页
+  - 未登录时：会先弹登录；登录成功后回跳到对应 `/chat/:conversationId`
+- Home 的 Characters 区不提供 “View all”
+
+#### 4.1.4 FAQ
+
+交互：
+- 点击某条问题行：
+  - 若当前收起：展开回答内容
+  - 若当前展开：收起回答内容
+  - 右侧箭头 icon 旋转表示展开态
+- 右侧不显示 “Hide / View” 文案，仅保留箭头
+
+### 4.2 Discover（/feed）
+
+#### 4.2.1 页面结构
+
+- 左侧：9:16 主视频区域（点击切换播放/暂停）
+- 右侧：角色信息卡（Character / Shorts tab）、Start chat、Share、评论区
+- 桌面端右侧有 clip 预览列（1 免费 + 多个待解锁）
+
+#### 4.2.2 Clip 列表规则（该角色的视频列表）
+
+- 每个角色固定有一个“免费 clip”，必须排第一（clip-01）
+- 进入该角色时默认选中并播放 clip-01
+- 其他 clip 默认锁定，点击后会尝试解锁（5 💎）；解锁后可播放
+
+字段/状态建议：
+- `clip.id`（Demo 形如 `${feedId}-clip-01`）
+- `clip.free: boolean`（clip-01 为 true）
+- `unlockedFeedVideos[clip.id]`
+
+#### 4.2.3 主视频播放交互
+
+- 滚轮/键盘：
+  - 鼠标滚轮在视频区域滚动：切换上一条/下一条 feed（节流）
+  - 键盘 ↑ / ↓：切换上一条/下一条 feed
+  - 效果：切换后会重置为该 feed 的 `clip-01` 并自动播放
 - 点击主视频画面：
-  - 播放/暂停（未解锁时不可播放）
-- hover 主视频：
-  - 出现 Pause/Play、Mute/Unmute 与音量滑杆
-- Like：
-  - 点心形按钮切换 liked 状态，数字会随状态 +1/-1（Demo 表现为本地变化）
+  - 若当前 clip 已解锁/免费：切换播放/暂停
+  - 若当前 clip 锁定：点击无效（需先解锁）
+- 暂停状态：
+  - 视频正中显示玻璃质感“三角形播放” icon
+- 音量：
+  - 页面不提供音量按钮与音量滑杆
 
-关键交互（解锁与扣费）：
+#### 4.2.4 Share 规则（重要）
 
-- 部分 feed 内容或 clip 需要解锁（弹层显示 Unlock required）
-- 点 Unlock：
-  - 若钻石不足：toast “Not enough 💎.”
-  - 若足够：扣除钻石并提示已解锁（toast），此内容在本机“已解锁”状态保存
+- 即使用户当前在看的是付费 clip，分享链接也必须是该角色的“免费 clip 链接”
+- Demo 分享链接格式：
+  - `GET /feed?item=<feedId>&clip=01`
 
-关键交互（Start chat / Shorts）：
+#### 4.2.5 评论区规则（重要）
 
-- 右侧 Character Tab：Start chat
-  - 若未登录：弹登录；登录后回到对应 /chat/:id
-  - 若已登录：直接进入 /chat/:id
-- 右侧 Shorts Tab（当 feed 项带 shorts）：
-  - 点 “Watch now” 跳到对应短剧 /shorts/:id
+- Comments 标题不显示计数数字
+- 不支持 Reply / 不支持评论的评论
+- 每条评论仅包含：用户头像、用户名、评论正文、点赞数
+- 不展示“发布时间/xx ago”
+- 评论归属是“对当前角色”的评论，不是对 clip 的评论
+  - 切换 clip 不改变评论
+  - 切换角色才切换评论列表
 
-关键交互（评论）：
+未登录发送评论：
+- 点击输入框输入内容 + 点击 Send：
+  - 若未登录：弹登录；登录成功后自动把这条评论补发到“当前角色”的评论列表顶部
+  - 若已登录：评论立即插入到“当前角色”的评论列表顶部
+- 点评论上的心形：
+  - 效果：切换点赞态；数值本地 +1/-1（Demo 仅本地变化）
 
-- 未登录输入评论并 Send：
-  - 先弹登录；登录后把这条评论补发到当前 feed 的评论列表顶部
-- 已登录 Send：
-  - 评论即时出现在列表顶部（本地 mock）
-- 评论 Like / 展开 replies：
-  - 点心形切换 liked；点 “x replies ▲/▼” 展开或收起回复列表
+#### 4.2.6 右侧角色卡按钮交互（Character Tab）
 
-### 2.3 Shorts 列表（/shorts）
+- 点击 Follow / Following：
+  - 效果：仅切换按钮文案与样式（本地 mock），不影响其他页面
+- 点击 Like（视频右侧的心形按钮）：
+  - 效果：切换 liked 状态，数字即时 +1/-1（本地 mock）
+  - 交互约束：点击 Like 不触发主视频播放/暂停（按钮会阻止事件冒泡）
+- 点击 Start chat：
+  - 若未登录：弹登录；登录成功后进入 `/chat/:conversationId`
+  - 若已登录：
+    - 创建或复用该角色会话（按 `character.id` 复用）
+    - 跳转到 `/chat/:conversationId` 进入聊天
+- 点击 Share：
+  - 效果：打开 Share 弹窗（modal）
+  - 弹窗里 Link 输入框默认填充“该角色免费 clip 链接”（始终 `clip=01`）
+  - 点击 Copy：复制链接到剪贴板，toast 提示 “Link copied.”
 
-页面结构：
+#### 4.2.7 Shorts Tab（参演短剧入口）
 
-- 按短剧系列分组显示（每组包含角色头像、名字、简介 + 一排 episode 预览卡）
+- 点击右侧 tab：Shorts
+  - 效果：在右侧展示该角色关联的短剧卡片横滑列表（9:16）
+- 点击某个短剧卡：
+  - 跳转到 `/shorts/:id`
 
-数据需求（页面需要哪些数据 / 字段名建议）：
+#### 4.2.8 Clip 预览列（右侧竖列）
 
-- 短剧系列（list）
-  - `shortDrama.id`
-  - `shortDrama.characterId`：用于关联主演/角色信息
-  - `shortDrama.episodes`：总集数（用于生成 Ep 预览数量）
-- 角色信息（每个系列左侧）
-  - `character.id`
-  - `character.name`
-  - `character.avatarUrl`（圆头像）
-  - `character.heroUrl` / `character.fallbackUrl`（兜底）
-  - `character.bio`（两行简介）
-- 每集预览卡（Ep x）
-  - `episode.ep`：集数编号（1..N）
-  - `episode.coverUrl`：单集封面（Demo 优先使用固定路径，不存在则 fallback 到通用封面）
+- clip 卡片的状态标签：
+  - 第一条固定 Free
+  - 已解锁但非播放中：Unlocked
+  - 当前播放中的：Playing
+- 点击某个 clip 卡：
+  - 若为 Free 或已解锁：
+    - 直接切换主播放器播放该 clip
+  - 若为锁定：
+    - 自动尝试解锁（固定扣 5 💎）
+    - 若钻石不足：toast “Not enough 💎.”，不切换播放
+    - 若钻石足够：扣钻并 toast “Unlocked.”，随后切换播放该 clip
 
-关键交互：
+### 4.3 Chat（/chat）
 
-- 点某个 episode 小卡（Ep x）：
-  - 跳转 /shorts/:id?ep=x
-- 点 “More”：
-  - 跳转 /shorts/:id（进入该短剧详情页）
+#### 4.3.1 左侧会话列（头像竖排）
 
-### 2.4 Shorts 详情（/shorts/:id）
+- 只显示头像，不显示昵称/最近消息/时间
+- 选中会话头像有 ring 表示正在对话
 
-页面结构：
+右键菜单（桌面端）：
+- 左键点击某个头像：
+  - 跳转到 `/chat/:conversationId`，右侧切换到该会话内容
+- 右键点击某个头像：
+  - 弹出右键菜单，只有一个动作：`Delete chat history`
+  - 点击该菜单项：弹二次确认弹窗（Cancel / Delete）
+  - 点击 Cancel：关闭弹窗，不做任何变更
+  - 点击 Delete：
+    - 本地删除该会话及所有消息
+    - 若当前正在该会话：自动跳转到“删除后列表的第一个会话”；若已经没有会话则回到 `/chat`
 
-- 左：竖屏 9:16 视频播放区（支持滚轮/触摸上下滑切集）
-- 右：短剧信息（标题、描述、标签）、钻石余额、当前集数、操作按钮（Like/Save/Share）
-- 下方：集数网格（1~N）
+#### 4.3.2 入口默认态
 
-数据需求（页面需要哪些数据 / 字段名建议）：
+- 已登录且存在会话：
+  - 进入 `/chat` 时自动跳转到最近一条会话 `/chat/:id`（避免出现右侧空白）
+- 已登录但没有会话：
+  - 右侧显示空状态卡片：提示去 Home 选择角色
+  - 点击空态按钮：跳转 `/browse`
 
-- 短剧基础信息
-  - `shortDrama.id`
-  - `shortDrama.title`
-  - `shortDrama.description`
-  - `shortDrama.episodes`：总集数（生成 1..N）
-  - `shortDrama.protagonist`：主演名（用于标签展示）
-  - `shortDrama.tags[]`：标签（用于展示两个 tag）
-- 播放资源
-  - `episode.videoSrc`：某一集的视频源（9:16）
-  - `episode.coverUrl`：某一集封面（可选）
-- 解锁与资产
-  - `wallet.diamonds`：当前 💎 余额
-  - `unlockedShortEpisodes[dramaId][ep] = true/false`：某剧某集是否已解锁（应账号维度）
-  - `unlockCost`：解锁成本（💎，Demo 固定 5）
-- 收藏
-  - `favoriteShorts[]`：收藏的短剧 id 列表（用于 Save 状态）
+### 4.4 ChatRoom（/chat/:id）
 
-关键规则（免费与解锁）：
+#### 4.4.1 消息区
 
-- 第 1–5 集免费
-- 第 6 集及以后默认锁定，需要消耗 💎 解锁（每集固定成本，Demo 为 5 💎）
-- 解锁状态保存在本机（刷新后仍保留）
+- 用户消息：右侧深色气泡
+- AI 消息：左侧浅色气泡
+- 支持附件消息：图片/视频点击可预览弹窗
 
-关键交互（播放区）：
+AI 文本混排（旁白 vs 正文）：
+- 旁白：`*...*` 包裹的片段，用灰色斜体展示
+- 正文：普通文本，用黑色正体展示
+- Demo 的 mock 回复默认会同时包含旁白与正文
 
-- 滚轮/触摸上滑下滑：
-  - 切换上一集/下一集（有节流）
-- 当当前集锁定：
-  - 播放区显示 Unlock required 弹层
-  - 点 Unlock：
-    - 钻石不足：toast “Not enough 💎.”
-    - 足够：扣钻并 toast “Unlocked.”，解锁后可播放
+交互（文本发送）：
+- 输入框内按 Enter：
+  - 效果：发送一条 user 消息（右侧气泡）
+  - 随后进入“typing…”状态（出现 `…` 气泡）
+  - 约 0.55s 后 AI 返回一条 assistant 文本（左侧气泡）
+  - AI 返回后列表自动滚到最底部
 
-关键交互（右侧信息区）：
+交互（附件预览）：
+- 点击图片/视频缩略卡：
+  - 效果：打开 Modal 预览
+  - Modal 关闭：点击遮罩或 Close（由 Modal 组件处理）
 
-- Like：
-  - 点心形切换 liked（本地态）
-- Save：
-  - 点书签切换收藏；收藏结果进入 Favorites 的 Shorts Tab
-- Share：
-  - 打开 Share 弹窗，提供平台按钮（X/Instagram/TikTok/Facebook）与 Link copy
+#### 4.4.2 Request Image / Request Video
 
-关键交互（集数网格）：
+交互：
+- 点击 Request Image：
+  - 先发送一条 user 文本消息：`Request image.`
+  - 显示 typing `…`
+  - 约 0.52s 后 AI 返回一条 assistant 消息：仅包含 `image` 附件（无正文）
+  - 自动滚到底部
+- 点击 Request Video：
+  - 先发送一条 user 文本消息：`Request video.`
+  - 显示 typing `…`
+  - 约 0.52s 后 AI 返回一条 assistant 消息：仅包含 `video` 附件（无正文）
+  - 自动滚到底部
 
-- 点某一集：
-  - 若已解锁或免费：直接切换播放该集
-  - 若锁定：尝试解锁（同 Unlock 逻辑），成功后切换到该集
+免费次数与扣费：
+- `freeLimit=3`（账号维度）
+- 第 1~3 次：免费，不扣钻
+- 第 4 次起：每次请求扣 `5 💎`
+- 免费刚用完（从 1 变为 0 的那一次）：
+  - 弹窗提示：Free requests used up
+  - 两个按钮：Subscribe（跳 `/subscription`）与 Cancel（关闭弹窗）
+- 当 `freeLeft=0`：
+  - 不显示 `Free requests left: x/3` 这一行
+  - 两个按钮右侧显示 `💎 5`
+- 当钻石不足时：
+  - toast 提示 `Not enough 💎.`，不发送请求消息、不产生 AI 回复
 
-### 2.5 Create（/create）
+#### 4.4.3 右侧 Profile
 
-入口逻辑：
+Profile tab：
+- 展示人物大图、name、age、bio
+- 仅保留两个信息块：Country、Personality
+- Personality 以“主标签 + 3 个 tag”形式展示（pill）
 
-- 进入 /create 默认先到模式选择页（Standard / VIP）
+Shorts tab：
+- 标题文案为 “Featured shorts”
+- 不展示 “From this tutor”
+- 列表为该角色关联短剧
+- 点击某条短剧的 Play：
+  - 跳转到 `/shorts`（Demo 当前逻辑）
 
-数据需求（页面需要哪些数据 / 字段名建议）：
-
-- 当前订阅状态
-  - `subscription.status`：是否 active（决定 VIP 是否可进入）
-  - `subscription.planId`（可选，仅展示用）
-
-模式选择（/create，模式选择页）：
-
-- Standard：
-  - 直接进入标准创建流程（/create/normal）
-- VIP：
-  - 若已订阅：进入 VIP 创建流程（/create/vip）
-  - 若未订阅：跳转到订阅页（/subscribe）
-
-VIP 创建（/create/vip）核心交互（Demo 表现）：
-
-- 多步流程：Looks（多步）→ Core → Prompt → Worldbook → Result
-- 每一步右上可点圆点跳转步骤；底部 Back/Next 导航
-- Prompt 步：必须填写 prompt 才能 Next
-- Worldbook 步：
-  - Write / Upload file 二选一
-  - Upload：上传 .txt/.md/.json → 解析中（Parsing…）→ 填入内容并生成 Preview
-- Result 步：
-  - 显示 3 个候选角色卡，用户可点击切换选中
-  - 点 Start Chat：
-    - 生成角色并创建会话
-    - 未登录：弹登录，登录后回到 /chat/:id
-    - 已登录：直接进入 /chat/:id
-
-数据需求（VIP 创建流程需要哪些数据 / 字段名建议）：
-
-- 选择项（用户输入/选择）
-  - `profile.race`
-  - `profile.age`
-  - `profile.hairStyle`
-  - `profile.hairColor`
-  - `profile.eyeColor`
-  - `profile.body`
-  - `character.name`
-  - `profile.personality`
-  - `profile.prompt`
-- Worldbook（创建时可携带到角色）
-  - `profile.worldbooks[]`
-    - `worldbook.id`
-    - `worldbook.title`
-    - `worldbook.summary`
-    - `worldbook.paragraphs[]`
-- 候选结果（3 张图）
-  - `candidate.heroUrl`：候选人物大图
-  - `candidate.avatarUrl`：候选头像
-
-### 2.6 Chat（/chat）
-
-进入状态（重要）：
-
-- 如果用户登录后从未和任何角色聊过：
-  - 显示空状态：提示去主页找想聊天的人，并提供“Go to Home”按钮
-- 如果用户已有聊天记录：
-  - 进入 /chat 会自动选中“最近聊天的人”，直接打开对应对话页（不需要再点头像）
-
-页面结构：
-
-- 左：极窄头像竖列（会话列表），仅显示头像
-  - 当前会话头像有光圈高亮
-- 右：对话内容区（/chat/:id）
-
-数据需求（页面需要哪些数据 / 字段名建议）：
-
-- 会话列表（按最近更新时间倒序）
-  - `conversation.id`
-  - `conversation.characterId`
-  - `conversation.updatedAt`
-  - `conversation.messages[]`（至少需要最后一条用于排序/预览；当前列表已不展示预览文字，但仍用于更新时间）
-- 角色信息（用于左侧头像）
-  - `character.id`
-  - `character.avatarUrl`
-
-### 2.7 ChatRoom（/chat/:id）
-
-页面结构：
-
-- 中间：消息列表 + 输入框
-- 底部：Request Image / Request Video 按钮 + 输入框 + Send
-- 右侧：Profile / Shorts 两个 tab
-  - Profile：角色大图 + 角色信息块（仅 Country / Personality）
-  - Shorts：该角色相关短剧入口（如果有）
-
-数据需求（页面需要哪些数据 / 字段名建议）：
-
-- 会话与消息
-  - `conversation.id`
-  - `conversation.characterId`
-  - `conversation.messages[]`
-    - `message.id`
-    - `message.role`：user / assistant
-    - `message.text`
-    - `message.createdAt`
-    - `message.attachments[]`（可选）
-      - `attachment.kind`：image / video
-      - `attachment.url`
-      - `attachment.fallbackUrl`（可选）
-      - `attachment.name`（可选）
-- 角色信息（顶部/右侧 Profile）
-  - `character.id`
-  - `character.name`
-  - `character.avatarUrl`
-  - `character.heroUrl`（右侧大图）
-  - `character.fallbackUrl`（兜底）
-- Free requests（免费次数）
-  - `mediaRequests.dateKey`：当日 key（用于每日重置）
-  - `mediaRequests.used`：当日已使用次数
-  - `freeLimit`：每日免费次数上限（Demo=3）
-  - `freeLeft`：剩余免费次数（页面展示 Free requests left: x/3）
-- 钻石与扣费
-  - `wallet.diamonds`
-  - `requestCost`：超出免费次数后的单次成本（Demo=5 💎）
-
-关键交互（消息）：
-
-- 发送文字消息：
-  - 用户输入 → 点 Send → 立即插入一条 user 消息
-  - 随后模拟 AI 回复（Demo）
-- AI 回复后自动滚动：
-  - 每次新增消息后，消息列表自动滚到最底部，保证看到最新消息
-
-关键交互（Request Image / Request Video）：
-
-- 用户点击 Request Image：
-  1. 先插入一条“用户发起请求”的消息（用户有感知）
-  2. 再由 AI 返回图片消息（仅附件，不带文字）
-- 用户点击 Request Video：
-  1. 先插入一条“用户发起请求”的消息
-  2. 再由 AI 返回视频消息（仅附件，不带文字）
-
-关键规则（Free requests left / 扣费）：
-
-- 每天有 3 次免费请求次数（Free requests left: x/3）
-- 超出免费次数后，每次请求消耗固定 💎（Demo 默认 5 💎）
-- 若钻石不足：弹 toast “Not enough 💎.”
-
-Profile 大图兜底：
-
-- 如果角色图加载失败，会自动替换为默认图片，避免出现空白
-
-### 2.8 Favorites（/favorites）
+### 4.5 Favorites（/favorites）
 
 登录门禁：
-
 - 未登录进入：
-  - 自动弹登录
-  - 页面仍显示一个简约引导卡：一张图 + Login + Home 两个按钮
+  - 展示 Login 引导卡
+  - 点击 Login：弹登录
+  - 点击 Home：跳转 `/browse`
 
-已登录页面结构：
+Tabs：
+- Shorts / Characters / Created
 
-- 顶部 Tabs：Shorts / Characters / Created
-- 列表区域：
-  - Shorts：展示收藏的短剧卡
-  - Characters：展示收藏的角色卡；点卡片可 Start chat
-  - Created：展示用户创建过的角色卡；点卡片可 Start chat
+Shorts tab（收藏短剧）：
+- 卡片样式与 Home Shorts 完全一致
+- hover 播放预览，移开停止回到 0s
+- hover 到某张卡：封面淡出、视频预览淡入并播放；移出暂停并回到 0s
+- 点击卡片：跳转到 `/shorts/:id`
+- 封面使用本地 `/images/home/shorts-cover*.png`
 
-空状态：
+Characters tab：
+- 展示已收藏角色卡片
+- 点击卡片上的 Start chat：
+  - 若未登录：弹登录；登录后回跳 `/chat/:conversationId`
+  - 若已登录：创建/打开会话并跳转 `/chat/:conversationId`
 
-- 每个 tab 在没有内容时会显示对应的 “No … yet.” 空状态卡片
+Created tab：
+- 展示用户创建的角色卡片（Demo 为本地态）
 
-数据需求（页面需要哪些数据 / 字段名建议）：
+### 4.6 Shorts 列表（/shorts）
 
-- 登录态
-  - `session.isLoggedIn`
-- 收藏数据
-  - `favoriteShorts[]`：短剧 id 列表
-  - `favoriteCharacters[]`：角色 id 列表
-- 用户创建角色
-  - `createdCharacters[]`：角色对象列表（同 Character 结构）
-- 依赖基础数据
-  - `shortDramas[]`：短剧列表（用于根据 id 找到短剧对象）
-  - `characters[]`：角色列表（用于根据 id 找到角色对象）
+- 每个短剧系列卡片：
+  - 左侧：关联角色头像/名字/简介
+  - 右侧：一排 Ep 预览卡（最多预览 6 集）+ 一个 More 卡
+- 点击某个 Ep 卡（Ep x）：
+  - 跳转到 `/shorts/:id?ep=<ep>`
+  - 页面效果：进入短剧播放页，初始化选择对应集数并尝试播放
+- 点击 More：
+  - 跳转到 `/shorts/:id`
+  - 页面效果：进入短剧播放页（默认第 1 集）
 
-### 2.9 Subscription（/subscribe）
+### 4.7 Shorts 播放页（/shorts/:id）
 
-页面结构：
+#### 4.7.1 左侧竖屏播放区
 
-- 订阅计划卡（Monthly / Quarterly / Yearly，Yearly 有“Best value”）
-- 钻石包 Packs（购买钻石）
-- Rules 规则说明
-- 购买确认弹窗（选择支付方式 + Pay now）
+- 播放资源：优先 `/videos/shorts/<id>/ep-XX.mp4`，失败 fallback 到 feed 视频
+- 滚轮/触摸上下滑可切集（有节流）
 
-数据需求（页面需要哪些数据 / 字段名建议）：
+解锁规则（Demo）：
+- 1–5 集免费
+- 6+ 默认锁定，点击 Unlock 扣 5 💎，不足则 toast
 
-- 订阅状态与资产
-  - `session.isLoggedIn`
-  - `subscription.status`：free / active / canceled
-  - `subscription.planId`：month / quarter / year
-  - `wallet.diamonds`
-- 订阅计划（可来自后端配置；Demo 为前端常量）
-  - `plan.id`：month / quarter / year
-  - `plan.name`：展示名（Monthly / Quarterly / Yearly）
-  - `plan.original`：原价
-  - `plan.discounted`：折后价
-  - `plan.discountLabel`：折扣标签（可选）
-  - `plan.period`：计费周期文案（/mo /quarter /year）
-  - `plan.highlight`：是否推荐（Best value）
-- 钻石包（可来自后端配置；Demo 为前端常量）
-  - `pack.id`
-  - `pack.diamonds`
-  - `pack.original`
-  - `pack.discounted`
-  - `pack.label`：折扣标签（例如 40% OFF）
-- 支付流程（Demo 为 mock）
-  - `paymentMethod`：card / crypto
-  - `confirmOpen`：确认弹窗开关
+播放器控件（hover 显示）：
+- 展示与隐藏：
+  - 鼠标 hover 到视频区域：控件淡入显示
+  - 鼠标移出视频区域：控件淡出隐藏，并自动关闭倍速菜单
+  - 触摸：touchStart 时会显示控件（Demo 行为）
+- 播放/暂停按钮：
+  - 点击：切换 `play()` / `pause()`；按钮 icon 随状态切换
+- 进度条（range）：
+  - 拖动：立即 seek 到目标时间点（`video.currentTime = value`）
+- 下一集按钮：
+  - 点击：切换到 `episode + 1`
+  - 当当前为最后一集：按钮 disabled，不可点击
+- 倍速按钮：
+  - 点击打开倍速选择菜单
+  - 可选：1.25x / 1.5x / 2x
+  - 选择后：设置 `video.playbackRate` 并关闭菜单
 
-关键交互（订阅计划）：
+#### 4.7.2 右侧信息区（已做减法）
 
-- 未登录点 Subscribe/Upgrade：
-  - 弹登录，登录后回到 /subscribe
-- 已订阅：
-  - 当前计划按钮为 Current plan（不可点）
-  - 允许 Upgrade 到更高档，不支持降级（Downgrades are not supported.）
-- 支付成功（Demo）：
-  - 订阅状态变为 active，并发 toast “Subscription activated.”
-  - 订阅附带赠送 💎（Demo：150 bonus）
+保留：
+- 标题、描述、标签（protagonist + 2 个 tag）
+- Like / Save / Share
 
-关键交互（购买钻石包）：
+移除（不展示）：
+- “Short drama” 顶部小标签
+- 右上角钻石余额与 Episode x/y
+- “Free: 1–5 · Locked: …” 规则文案
 
-- 未登录点 Buy：
-  - 先弹登录；登录后会继续引导购买
-- 未订阅点 Buy：
-  - toast 提示需要订阅（Subscription required to buy 💎.）
-  - 自动弹出订阅购买确认（优先引导 Yearly）
-- 已订阅点 Buy：
-  - 弹出钻石包确认 → 选择支付方式 → Pay now → 增加 💎 并 toast “💎 added.”
+Share：
+- 弹窗提供平台按钮 + Link copy
 
-### 2.10 Subscription Management（/subscription）
+#### 4.7.3 页面内所有按钮交互（开发验收用）
 
-未订阅：
+- 点击顶部 Back：
+  - 跳转到 `/shorts`
+- 锁定态（6+ 集）覆盖层：
+  - 点击 Unlock：
+    - 若钻石不足：toast “Not enough 💎.”
+    - 若钻石足够：扣 5 💎 并 toast “Unlocked.”，覆盖层消失，视频可播放
+- 集数网格（Episodes 1..N）：
+  - 点击已解锁集数按钮：
+    - 效果：切换到该集并开始播放
+  - 点击锁定集数按钮：
+    - 效果：立即尝试解锁该集（扣 5 💎）
+    - 钻石不足：toast “Not enough 💎.”，不切换
+    - 钻石足够：解锁成功后自动切换到该集并开始播放
+- Like（心形）：
+  - 效果：切换 liked；旁边数字即时 +1/-1（本地 mock）
+- Save（书签）：
+  - 效果：切换收藏状态；旁边数字即时 +1/-1（本地 mock）
+  - 收藏后：Favorites → Shorts tab 会出现该短剧卡片
+- Share：
+  - 效果：打开 Share 弹窗
+  - 点击 Copy：复制链接；toast “Link copied.”
 
-- 显示无订阅说明 + 去订阅按钮（跳 /subscribe）
+## 5. Demo → 真产品迁移提示（给开发）
 
-已订阅：
-
-- 显示当前计划、到期时间
-- Auto-renew 开关（On/Off）
-- Cancel subscription（取消订阅）
-
-数据需求（页面需要哪些数据 / 字段名建议）：
-
-- 订阅信息
-  - `subscription.status`
-  - `subscription.planId`
-  - `subscription.expiresAt`
-  - `subscription.renew`：自动续费开关
-- 操作能力（真实产品应为 API；Demo 为本地动作）
-  - `cancelSubscription()`
-  - `toggleRenew()`
-
-### 2.11 Account Center（/account）
-
-未登录：
-
-- 显示提示 “Please sign in to view your account.”
-
-已登录：
-
-- 顶部 Tabs：Profile / Subscription
-
-Profile Tab：
-
-- 展示头像与用户名、注册邮箱
-- Upload：上传头像（本地读取为 dataURL）
-- Save：保存 Profile（仅当内容有变化才可点）
-- Cancel：回滚到当前 session 的 profile 值
-
-Subscription Tab（交付型 mock）：
-
-- Subscription 卡：展示状态（Active/Canceled/Free）、Next billing date、Auto-renew（仅展示）
-- Cancel subscription：弹确认框
-  - Confirm cancel：订阅状态变为 canceled（Demo）
-- Diamonds：展示余额说明
-- Diamond usage：消费明细列表（mock）
-- How cancellation works：取消订阅流程说明（文字）
-
-数据需求（页面需要哪些数据 / 字段名建议）：
-
-- 用户信息（Profile Tab）
-  - `session.isLoggedIn`
-  - `session.displayName`
-  - `session.avatarUrl`
-  - `session.email`
-- 订阅信息（Subscription Tab）
-  - `subscription.status`
-  - `subscription.planId`
-  - `subscription.expiresAt`
-  - `subscription.renew`
-- 钻石资产
-  - `wallet.diamonds`
-- 💎消费明细（Demo 为 mock；真实产品应来自账本）
-  - `diamondLedger[]`
-    - `ledger.id`
-    - `ledger.type`：earn / spend
-    - `ledger.title`
-    - `ledger.subtitle`
-    - `ledger.amount`：正负数（单位 💎）
-    - `ledger.at`：时间戳
-
-### 2.12 法律/内容页（/privacy、/terms、/faq、/blog、/articles/:slug）
-
-数据需求（页面需要哪些数据 / 字段名建议）：
-
-- 静态内容
-  - `page.title`
-  - `page.sections[]`：段落/小节内容（可为 Markdown）
-- Blog 列表
-  - `article.slug`
-  - `article.title`
-  - `article.summary`
-  - `article.coverUrl`（可选）
-  - `article.publishedAt`（可选）
-- Article 详情
-  - `article.slug`
-  - `article.title`
-  - `article.content`（Markdown/HTML）
-
-## 3. Demo 与真实产品的差异（开发注意）
-
-### 3.1 当前为 Mock 的部分（但交互可复用）
-
-- 登录：Demo 直接模拟登录成功，并写入本地 session
-- 支付：订阅与钻石包购买为模拟支付
-- AI：对话、图片、视频返回为本地模拟与固定资源
-- 解锁：Shorts/Feed 解锁状态保存在本机（真实产品应与账号绑定）
-
-### 3.2 真实产品落地时需要“账号维度”的状态
-
-- 会话与消息：应从本地持久化迁移到账号数据
-- 💎余额与消费明细：应从本地迁移到账号资产系统
-- 解锁记录：短剧集数/Discover clip 解锁应账号可跨设备同步
-- 收藏：收藏短剧/角色/创建角色列表应账号可跨设备同步
+- Unlock / Favorites / Conversations / FreeRequests 在 Demo 中都保存在本地 persist；真产品应改为账号维度服务端存储
+- Discover 的评论归属是 Character，而不是 clip：真实产品评论 key 建议使用 `characterId`
+- 短剧播放器控件与解锁是短剧页核心体验，后续可补充播放进度保存（`dramaId + episode + progressSeconds`）

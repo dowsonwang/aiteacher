@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
   Bookmark,
   Compass,
-  FileText,
   Film,
   Home,
   Instagram,
@@ -16,9 +15,10 @@ import {
   WalletCards,
 } from "lucide-react";
 import { cn } from "../lib/utils.js";
-import { languageOptions, t } from "../i18n/i18n.js";
+import { t } from "../i18n/i18n.js";
 import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
+import Modal from "./Modal.jsx";
 
 const navItems = [
   { to: "/browse", icon: Home, labelKey: "nav_home" },
@@ -31,26 +31,15 @@ const navItems = [
 ];
 
 export default function Sidebar() {
-  const navigate = useNavigate();
   const language = useAppStore((s) => s.language);
-  const openLanguage = useUIStore((s) => s.openLanguage);
+  const grantDailyShareReward = useAppStore((s) => s.grantDailyShareReward);
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
 
-  const currentLanguage = useMemo(
-    () => languageOptions.find((x) => x.code === language) || languageOptions[0],
-    [language],
-  );
-  const [legalOpen, setLegalOpen] = useState(false);
-  const protocols = useMemo(
-    () => [
-      { key: "privacy", label: "Privacy Policy", href: "/privacy" },
-      { key: "terms", label: "User Agreement", href: "/terms" },
-      { key: "faq", label: "FAQ", href: "/faq" },
-      { key: "blog", label: "Blog", href: "/blog" },
-    ],
-    [],
-  );
+  const [freeDiamondOpen, setFreeDiamondOpen] = useState(false);
+  const [shareHint, setShareHint] = useState("");
+  const [discordHint, setDiscordHint] = useState("");
+
   const socialLinks = useMemo(
     () => [
       { name: "Discord", href: "https://discord.com/", Icon: MessageCircle },
@@ -60,6 +49,12 @@ export default function Sidebar() {
     ],
     [],
   );
+
+  const shareEntryUrl = useMemo(() => {
+    const base = typeof window !== "undefined" ? window.location?.origin || "" : "";
+    return base ? `${base}/browse` : "/browse";
+  }, []);
+
   const brandLogoUrl = useMemo(
     () =>
       `https://coreva-normal.trae.ai/api/ide/v1/text_to_image?prompt=${encodeURIComponent(
@@ -87,7 +82,6 @@ export default function Sidebar() {
         <button
           type="button"
           onClick={() => {
-            setLegalOpen(false);
             toggleSidebar();
           }}
           className={cn(
@@ -122,10 +116,22 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className={cn("sticky bottom-0 border-t border-zinc-200 bg-white pt-4", sidebarCollapsed ? "px-1" : "px-0")}>
+      <div className={cn("mt-auto bg-white pt-4", sidebarCollapsed ? "px-1" : "px-0")}>
+        <button
+          type="button"
+          onClick={() => setFreeDiamondOpen(true)}
+          className={cn(
+            "rounded-xl bg-zinc-900 text-sm font-medium text-white hover:bg-zinc-800",
+            sidebarCollapsed ? "mx-auto flex h-9 w-9 items-center justify-center" : "w-full px-3 py-2",
+          )}
+          aria-label="Daily free diamonds"
+        >
+          {sidebarCollapsed ? <span className="text-base leading-none">🎁</span> : "每日免费钻石"}
+        </button>
+
         <div
           className={cn(
-            "w-full",
+            "w-full pt-3",
             sidebarCollapsed ? "flex flex-col items-center gap-3" : "flex items-center justify-between gap-3",
           )}
         >
@@ -143,74 +149,93 @@ export default function Sidebar() {
           ))}
         </div>
 
-        <button
-          type="button"
-          onClick={openLanguage}
-          className={cn(
-            "rounded-xl border border-zinc-200 bg-white py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-50",
-            sidebarCollapsed ? "mx-auto mt-3 flex h-9 w-9 items-center justify-center" : "mt-3 w-full px-3",
-          )}
+        <Modal
+          open={freeDiamondOpen}
+          onClose={() => {
+            setFreeDiamondOpen(false);
+            setShareHint("");
+            setDiscordHint("");
+          }}
+          title="每日免费钻石"
         >
-          {sidebarCollapsed ? (
-            <span className="text-base">🌐</span>
-          ) : (
-            <span className="inline-flex w-full items-center">
-              <span className="mr-2">🌐</span>
-              <span className="flex-1 text-center">{currentLanguage.label}</span>
-            </span>
-          )}
-        </button>
-
-        {sidebarCollapsed ? (
-          <div className="relative mt-3 flex justify-center">
-            <button
-              type="button"
-              onClick={() => setLegalOpen((v) => !v)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50"
-              aria-label="Legal"
-            >
-              <FileText className="h-4 w-4" />
-            </button>
-            <div
-              className={cn(
-                "absolute bottom-12 left-0 -ml-3 w-44 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl",
-                legalOpen ? "block" : "hidden",
-              )}
-            >
-              {protocols.map((p) => (
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+            <div className="text-sm font-semibold text-zinc-900">方式 1：分享到社交平台</div>
+            <div className="mt-2 text-sm leading-6 text-zinc-600">
+              每日首次分享可获得 5 个免费钻石。你可以直接选择下方平台完成分享。
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {[
+                {
+                  key: "x",
+                  label: "X",
+                  run: () => {
+                    window.open(
+                      `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareEntryUrl)}&text=${encodeURIComponent("分享获取免费钻石")}`,
+                      "_blank",
+                      "noopener,noreferrer",
+                    );
+                    grantDailyShareReward?.({ amount: 5 });
+                    setShareHint("已打开 X 分享窗口，若为今日首次分享将获得 5 个免费钻石");
+                  },
+                },
+                {
+                  key: "facebook",
+                  label: "Facebook",
+                  run: () => {
+                    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareEntryUrl)}`, "_blank", "noopener,noreferrer");
+                    grantDailyShareReward?.({ amount: 5 });
+                    setShareHint("已打开 Facebook 分享窗口，若为今日首次分享将获得 5 个免费钻石");
+                  },
+                },
+                {
+                  key: "whatsapp",
+                  label: "WhatsApp",
+                  run: () => {
+                    window.open(
+                      `https://wa.me/?text=${encodeURIComponent(`分享获取免费钻石 ${shareEntryUrl}`)}`,
+                      "_blank",
+                      "noopener,noreferrer",
+                    );
+                    grantDailyShareReward?.({ amount: 5 });
+                    setShareHint("已打开 WhatsApp 分享窗口，若为今日首次分享将获得 5 个免费钻石");
+                  },
+                },
+              ].map((item) => (
                 <button
-                  key={p.key}
+                  key={item.key}
                   type="button"
-                  onClick={() => {
-                    setLegalOpen(false);
-                    navigate(p.href);
-                  }}
-                  className="w-full px-3 py-2 text-left text-xs text-zinc-700 hover:bg-zinc-50"
+                  onClick={item.run}
+                  className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
                 >
-                  {p.label}
+                  {item.label}
                 </button>
               ))}
             </div>
+            {shareHint ? <div className="mt-2 text-xs font-medium text-zinc-500">{shareHint}</div> : null}
           </div>
-        ) : (
-          <div className="mt-3 pb-5 text-xs text-zinc-500">
-            {protocols.map((p, idx) => (
-              <span key={p.key}>
-                <a
-                  href={p.href}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigate(p.href);
-                  }}
-                  className="hover:text-zinc-900"
-                >
-                  {p.label}
-                </a>
-                {idx === protocols.length - 1 ? null : <span className="px-1.5">·</span>}
-              </span>
-            ))}
+
+          <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4">
+            <div className="text-sm font-semibold text-zinc-900">方式 2：加入 Discord 社区领取钻石</div>
+            <div className="mt-2 text-sm leading-6 text-zinc-600">
+              请按以下步骤完成领取：
+              <div className="mt-2 space-y-1 text-zinc-700">
+                <div>1. 进入我们的 Discord 社区</div>
+                <div>2. 在社区内点击“获取积分”</div>
+                <div>3. 填写你的邮箱，即可获得免费钻石</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setDiscordHint("已触发 Discord 社区入口（当前为 mock，未真实跳转）");
+              }}
+              className="mt-3 inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-50"
+            >
+              加入 Discord 社区
+            </button>
+            {discordHint ? <div className="mt-2 text-xs font-medium text-zinc-500">{discordHint}</div> : null}
           </div>
-        )}
+        </Modal>
       </div>
     </aside>
   );

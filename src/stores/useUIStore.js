@@ -5,6 +5,9 @@ export const useUIStore = create((set) => ({
   authMode: "login",
   postAuthPath: null,
   languageOpen: false,
+  shareOpen: false,
+  shareUrl: "",
+  shareTitle: "",
   sidebarCollapsed: localStorage.getItem("sidebarCollapsed") === "1",
 
   openAuth: ({ mode = "login", postAuthPath = null } = {}) =>
@@ -17,6 +20,10 @@ export const useUIStore = create((set) => ({
   openLanguage: () => set({ languageOpen: true }),
 
   closeLanguage: () => set({ languageOpen: false }),
+
+  openShare: ({ url = "", title = "" } = {}) => set({ shareOpen: true, shareUrl: url, shareTitle: title }),
+
+  closeShare: () => set({ shareOpen: false }),
 
   toggleSidebar: () =>
     set((s) => {

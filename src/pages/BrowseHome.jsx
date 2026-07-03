@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import HomeFooter from "../components/HomeFooter.jsx";
 import ImmersiveCharacterCard from "../components/ImmersiveCharacterCard.jsx";
 import LiveStreamCard from "../components/LiveStreamCard.jsx";
+import OnboardingTour from "../components/OnboardingTour.jsx";
 import SectionHeader from "../components/SectionHeader.jsx";
 import { ChevronDown, Compass, Film, Wand2 } from "lucide-react";
 import { cn } from "../lib/utils.js";
@@ -113,6 +114,18 @@ export default function BrowseHome() {
   );
   const shortsVideoRefs = useRef(new Map());
   const [hoveredShortId, setHoveredShortId] = useState("");
+  const heroShortsRef = useRef(null);
+  const heroDiscoverRef = useRef(null);
+  const heroCreateRef = useRef(null);
+  const homeShortsModuleRef = useRef(null);
+  const characterFilterRef = useRef(null);
+  const firstCharacterRef = useRef(null);
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+
+  useEffect(() => {
+    setTourOpen(true);
+  }, []);
 
   useEffect(() => {
     shortsVideoRefs.current.forEach((el, id) => {
@@ -127,8 +140,62 @@ export default function BrowseHome() {
     });
   }, [hoveredShortId]);
 
+  const tourSteps = [
+    {
+      key: "home-hero-shorts",
+      target: heroShortsRef.current,
+      title: "Shorts",
+      body: "进入 Shorts，浏览平台精选短剧内容，快速开始观看。",
+    },
+    {
+      key: "home-hero-discover",
+      target: heroDiscoverRef.current,
+      title: "Discover",
+      body: "进入 Discover，观看精彩短视频内容，并探索更多角色。",
+    },
+    {
+      key: "home-hero-create",
+      target: heroCreateRef.current,
+      title: "Create",
+      body: "进入 Create，可免费或付费创建人物，完成更个性化的角色定制。",
+    },
+    {
+      key: "home-shorts-module",
+      target: homeShortsModuleRef.current,
+      title: "Recommended shorts",
+      body: "这里展示当前推荐的短剧内容。你可以横向浏览卡片，并点击进入播放页。",
+    },
+    {
+      key: "home-character-filter",
+      target: characterFilterRef.current,
+      title: "Character filters",
+      body: "使用筛选按钮切换人物类型，快速定位你想看的角色。",
+    },
+    {
+      key: "home-first-character",
+      target: firstCharacterRef.current,
+      title: "Start a chat",
+      body: "点击任意人物卡片即可进入对话，与该角色开始聊天。",
+    },
+  ];
+
   return (
     <div className="space-y-8">
+      <OnboardingTour
+        open={tourOpen}
+        step={tourStep}
+        steps={tourSteps}
+        onClose={() => setTourOpen(false)}
+        onNext={() => {
+          const isLast = tourStep >= tourSteps.length - 1;
+          if (isLast) {
+            setTourOpen(false);
+            return;
+          }
+          setTourStep((v) => v + 1);
+        }}
+      />
+
       <section className="grid grid-cols-1 gap-6 lg:h-[420px] lg:min-h-[380px] lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:items-stretch">
         <div className="flex h-full flex-col gap-5">
           <div className="px-1 pt-1">
@@ -143,9 +210,11 @@ export default function BrowseHome() {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {heroLinks.map((x) => {
               const Icon = x.Icon;
+              const ref = x.href === "/shorts" ? heroShortsRef : x.href === "/feed" ? heroDiscoverRef : heroCreateRef;
               return (
                 <button
                   key={x.href}
+                  ref={ref}
                   type="button"
                   onClick={() => navigate(x.href)}
                   className="group relative min-h-[124px] overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm outline-none transition hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-zinc-900/40"
@@ -172,7 +241,7 @@ export default function BrowseHome() {
         </div>
 
         <section className="flex h-full flex-col overflow-hidden rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
+          <div ref={homeShortsModuleRef} className="flex items-center justify-between gap-3">
             <div className="text-base font-semibold text-zinc-900">Shorts</div>
             <button type="button" onClick={() => navigate("/shorts")} className="text-sm font-medium text-zinc-600 hover:text-zinc-900">
               View all →
@@ -250,7 +319,7 @@ export default function BrowseHome() {
         <div className="flex items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <div className="text-base font-semibold text-zinc-900">Characters</div>
-            <div className="flex items-center gap-2">
+            <div ref={characterFilterRef} className="flex items-center gap-2">
               {[
                 { key: "female", label: "Female" },
                 { key: "anime", label: "Anime" },
@@ -274,9 +343,15 @@ export default function BrowseHome() {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {displayCharacters.slice(0, 24).map((c) => (
-            <ImmersiveCharacterCard key={c.id} character={c} onStartChat={onStartChat} />
-          ))}
+          {displayCharacters.slice(0, 24).map((c, idx) =>
+            idx === 0 ? (
+              <div key={c.id} ref={firstCharacterRef}>
+                <ImmersiveCharacterCard character={c} onStartChat={onStartChat} />
+              </div>
+            ) : (
+              <ImmersiveCharacterCard key={c.id} character={c} onStartChat={onStartChat} />
+            ),
+          )}
         </div>
 
         <div className="mt-8 space-y-4">

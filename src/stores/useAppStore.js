@@ -3,6 +3,25 @@ import { persist } from "zustand/middleware";
 import { characters as seedCharacters } from "../data/mock.js";
 
 const generateId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+const utcDateKey = () => new Date().toISOString().slice(0, 10);
+const makeAccountKey = ({ email = "", provider = "", displayName = "" } = {}) =>
+  `${provider || "local"}:${email || displayName || "guest"}`;
+const createDiamondWallet = () => ({
+  free: 0,
+  subscription: 0,
+  reward: 0,
+  lastFreeGrantUtcDate: null,
+  lastShareGrantUtcDate: null,
+});
+const normalizeDiamondWallet = (wallet) => {
+  const next = { ...createDiamondWallet(), ...(wallet || {}) };
+  if (next.lastFreeGrantUtcDate !== utcDateKey()) next.free = 0;
+  return next;
+};
+const totalDiamondsOf = (wallet) => {
+  const safe = normalizeDiamondWallet(wallet);
+  return Math.max(0, safe.free) + Math.max(0, safe.subscription) + Math.max(0, safe.reward);
+};
 
 const ensureConversation = (state, characterId, allCharacters) => {
   const existing = state.conversations.find((c) => c.characterId === characterId);
@@ -32,8 +51,12 @@ export const useAppStore = create(
         avatarUrl: "",
         email: "",
         provider: "",
+        accountKey: "",
       },
       diamonds: 0,
+      diamondBreakdown: { free: 0, subscription: 0, reward: 0 },
+      diamondWallets: {},
+      diamondRewardNotice: { visible: false, amount: 0, utcDate: null },
       subscription: {
         planId: null,
         status: "none",
@@ -41,6 +64,7 @@ export const useAppStore = create(
         expiresAt: null,
       },
       createdCharacters: [],
+      characterCreations: [],
       conversations: [],
       mediaRequests: { used: 0 },
       unlockedShortEpisodes: {},
@@ -49,22 +73,86 @@ export const useAppStore = create(
       favoriteLiveHosts: ["l1"],
       favoriteCharacters: ["c2", "c3"],
 
-      getAllCharacters: () => [...seedCharacters, ...get().createdCharacters],
+      getAllCharacters: () => {
+        const state = get();
+        const accountKey = state.session?.accountKey;
+        const created = Array.isArray(state.createdCharacters) ? state.createdCharacters : [];
+        const visible = accountKey
+          ? created.filter((c) => c?.isPublic || c?.ownerKey === accountKey)
+          : created.filter((c) => c?.isPublic);
+        return [...seedCharacters, ...visible];
+      },
 
       setLanguage: (language) => set({ language }),
 
       login: ({ displayName, avatarUrl, email = "", provider = "" }) =>
-        set({
-          session: { isLoggedIn: true, displayName, avatarUrl, email, provider },
+        set((state) => {
+          const accountKey = makeAccountKey({ displayName, email, provider });
+          const today = utcDateKey();
+          const wallets = { ...(state.diamondWallets || {}) };
+          const currentWallet = normalizeDiamondWallet(wallets[accountKey]);
+          const alreadyClaimedToday = currentWallet.lastFreeGrantUtcDate === today;
+          const nextWallet = alreadyClaimedToday
+            ? currentWallet
+            : {
+                ...currentWallet,
+                free: currentWallet.free + 5,
+                lastFreeGrantUtcDate: today,
+              };
+          wallets[accountKey] = nextWallet;
+          return {
+            session: { isLoggedIn: true, displayName, avatarUrl, email, provider, accountKey },
+            diamondWallets: wallets,
+            diamondBreakdown: {
+              free: nextWallet.free,
+              subscription: nextWallet.subscription,
+              reward: nextWallet.reward,
+            },
+            diamonds: totalDiamondsOf(nextWallet),
+            diamondRewardNotice: alreadyClaimedToday ? { visible: false, amount: 0, utcDate: today } : { visible: true, amount: 5, utcDate: today },
+          };
         }),
 
       logout: () =>
         set({
-          session: { isLoggedIn: false, displayName: "", avatarUrl: "", email: "", provider: "" },
+          session: { isLoggedIn: false, displayName: "", avatarUrl: "", email: "", provider: "", accountKey: "" },
           subscription: { planId: null, status: "none", renew: true, expiresAt: null },
           diamonds: 0,
+          diamondBreakdown: { free: 0, subscription: 0, reward: 0 },
+          diamondRewardNotice: { visible: false, amount: 0, utcDate: null },
           mediaRequests: { used: 0 },
         }),
+
+      refreshDiamondState: () =>
+        set((state) => {
+          const accountKey = state.session?.accountKey;
+          if (!accountKey) {
+            return {
+              diamonds: 0,
+              diamondBreakdown: { free: 0, subscription: 0, reward: 0 },
+            };
+          }
+          const wallets = { ...(state.diamondWallets || {}) };
+          const nextWallet = normalizeDiamondWallet(wallets[accountKey]);
+          wallets[accountKey] = nextWallet;
+          return {
+            diamondWallets: wallets,
+            diamondBreakdown: {
+              free: nextWallet.free,
+              subscription: nextWallet.subscription,
+              reward: nextWallet.reward,
+            },
+            diamonds: totalDiamondsOf(nextWallet),
+          };
+        }),
+
+      dismissDiamondRewardNotice: () =>
+        set((state) => ({
+          diamondRewardNotice: {
+            ...state.diamondRewardNotice,
+            visible: false,
+          },
+        })),
 
       updateSessionProfile: ({ displayName, avatarUrl }) =>
         set((state) => ({
@@ -79,6 +167,16 @@ export const useAppStore = create(
         set((state) => {
           const now = Date.now();
           const days = planId === "year" ? 365 : planId === "quarter" ? 90 : 30;
+          const accountKey = state.session?.accountKey;
+          const wallets = { ...(state.diamondWallets || {}) };
+          const currentWallet = normalizeDiamondWallet(wallets[accountKey]);
+          const nextWallet = accountKey
+            ? {
+                ...currentWallet,
+                subscription: currentWallet.subscription + Math.max(0, bonusDiamonds),
+              }
+            : currentWallet;
+          if (accountKey) wallets[accountKey] = nextWallet;
           return {
             subscription: {
               planId,
@@ -86,21 +184,100 @@ export const useAppStore = create(
               renew: true,
               expiresAt: now + days * 24 * 60 * 60 * 1000,
             },
-            diamonds: state.diamonds + Math.max(0, bonusDiamonds),
+            diamondWallets: wallets,
+            diamondBreakdown: {
+              free: nextWallet.free,
+              subscription: nextWallet.subscription,
+              reward: nextWallet.reward,
+            },
+            diamonds: totalDiamondsOf(nextWallet),
           };
         }),
 
-      addDiamonds: (amount) =>
-        set((state) => ({
-          diamonds: Math.max(0, state.diamonds + Math.max(0, Number(amount) || 0)),
-        })),
+      addDiamonds: (amount, kind = "reward") =>
+        set((state) => {
+          const accountKey = state.session?.accountKey;
+          if (!accountKey) return {};
+          const bucket = kind === "subscription" ? "subscription" : kind === "free" ? "free" : "reward";
+          const wallets = { ...(state.diamondWallets || {}) };
+          const currentWallet = normalizeDiamondWallet(wallets[accountKey]);
+          const nextWallet = {
+            ...currentWallet,
+            [bucket]: currentWallet[bucket] + Math.max(0, Number(amount) || 0),
+          };
+          wallets[accountKey] = nextWallet;
+          return {
+            diamondWallets: wallets,
+            diamondBreakdown: {
+              free: nextWallet.free,
+              subscription: nextWallet.subscription,
+              reward: nextWallet.reward,
+            },
+            diamonds: totalDiamondsOf(nextWallet),
+          };
+        }),
+
+      grantDailyShareReward: ({ amount = 5 } = {}) => {
+        const state = get();
+        const accountKey = state.session?.accountKey;
+        if (!accountKey) return { granted: false, amount: 0 };
+        const rewardAmount = Math.max(0, Number(amount) || 0);
+        if (!rewardAmount) return { granted: false, amount: 0 };
+
+        const today = utcDateKey();
+        const wallets = { ...(state.diamondWallets || {}) };
+        const currentWallet = normalizeDiamondWallet(wallets[accountKey]);
+        if (currentWallet.lastShareGrantUtcDate === today) return { granted: false, amount: 0 };
+
+        const nextWallet = {
+          ...currentWallet,
+          reward: currentWallet.reward + rewardAmount,
+          lastShareGrantUtcDate: today,
+        };
+        wallets[accountKey] = nextWallet;
+        set({
+          diamondWallets: wallets,
+          diamondBreakdown: {
+            free: nextWallet.free,
+            subscription: nextWallet.subscription,
+            reward: nextWallet.reward,
+          },
+          diamonds: totalDiamondsOf(nextWallet),
+        });
+        return { granted: true, amount: rewardAmount };
+      },
 
       spendDiamonds: (amount) => {
         const cost = Math.max(0, Number(amount) || 0);
-        const current = get().diamonds;
         if (cost <= 0) return true;
-        if (current < cost) return false;
-        set({ diamonds: current - cost });
+        const state = get();
+        const accountKey = state.session?.accountKey;
+        if (!accountKey) return false;
+        const wallets = { ...(state.diamondWallets || {}) };
+        const currentWallet = normalizeDiamondWallet(wallets[accountKey]);
+        if (totalDiamondsOf(currentWallet) < cost) return false;
+
+        let rest = cost;
+        const nextWallet = { ...currentWallet };
+        const buckets = ["free", "reward", "subscription"];
+        buckets.forEach((bucket) => {
+          if (rest <= 0) return;
+          const current = Math.max(0, nextWallet[bucket]);
+          const spend = Math.min(current, rest);
+          nextWallet[bucket] = current - spend;
+          rest -= spend;
+        });
+
+        wallets[accountKey] = nextWallet;
+        set({
+          diamondWallets: wallets,
+          diamondBreakdown: {
+            free: nextWallet.free,
+            subscription: nextWallet.subscription,
+            reward: nextWallet.reward,
+          },
+          diamonds: totalDiamondsOf(nextWallet),
+        });
         return true;
       },
 
@@ -177,6 +354,153 @@ export const useAppStore = create(
         set((state) => ({
           subscription: { ...state.subscription, renew: !state.subscription.renew },
         })),
+
+      startCharacterCreation: ({ initialGender = "" } = {}) => {
+        const state = get();
+        const accountKey = state.session?.accountKey;
+        if (!accountKey) return { ok: false, reason: "login" };
+        const currentList = Array.isArray(state.characterCreations) ? state.characterCreations : [];
+        const existingDraft = currentList
+          .filter((r) => r?.ownerKey === accountKey && !r?.characterId)
+          .slice()
+          .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0];
+        if (existingDraft?.id) return { ok: true, id: existingDraft.id, reused: true };
+        const id = `cr_${generateId()}`;
+        const now = Date.now();
+        const record = {
+          id,
+          ownerKey: accountKey,
+          status: initialGender ? "appearance" : "gender",
+          createdAt: now,
+          updatedAt: now,
+          appearance: {
+            gender: initialGender,
+            race: "",
+            bodyChoice: "",
+            bodyCustom: "",
+            eyeChoice: "",
+            eyeCustom: "",
+            hairStyleChoice: "",
+            hairStyleCustom: "",
+            hairColorChoice: "",
+            hairColorCustom: "",
+            name: "",
+            country: "",
+            age: "",
+            personality: [],
+          },
+          portraitUrl: "",
+          texts: { relation: "", scenario: "", firstMessage: "", example: "" },
+          isPublic: false,
+          characterId: "",
+          videos: [],
+          videoDraftPrompts: ["", "", ""],
+        };
+        set((s) => ({
+          characterCreations: [record, ...(Array.isArray(s.characterCreations) ? s.characterCreations : [])],
+        }));
+        return { ok: true, id };
+      },
+
+      updateCharacterCreation: (creationId, patch = {}) =>
+        set((state) => {
+          const list = Array.isArray(state.characterCreations) ? state.characterCreations : [];
+          const next = list.map((r) => {
+            if (r.id !== creationId) return r;
+            return { ...r, ...patch, updatedAt: Date.now() };
+          });
+          return { characterCreations: next };
+        }),
+
+      completeCharacterCreation: ({ creationId, isPublic = false } = {}) => {
+        const state = get();
+        const accountKey = state.session?.accountKey;
+        if (!accountKey) return { ok: false, reason: "login" };
+
+        const list = Array.isArray(state.characterCreations) ? state.characterCreations : [];
+        const record = list.find((r) => r.id === creationId);
+        if (!record) return { ok: false, reason: "invalid" };
+
+        const myCreated = (Array.isArray(state.createdCharacters) ? state.createdCharacters : []).filter((c) => c?.ownerKey === accountKey);
+        const needPay = myCreated.length >= 1;
+        if (needPay) {
+          const ok = state.spendDiamonds(5);
+          if (!ok) return { ok: false, reason: "diamonds" };
+        }
+
+        const appearance = record.appearance || {};
+        const name = `${appearance.name || "Character"}`.trim() || "Character";
+        const personality = Array.isArray(appearance.personality) ? appearance.personality : [];
+        const bioParts = [`${record.texts?.relation || ""}`.trim(), `${record.texts?.scenario || ""}`.trim()].filter(Boolean);
+        const bio = bioParts.length ? bioParts.join(" · ").slice(0, 160) : "A new character created by you.";
+        const starter = `${record.texts?.firstMessage || "Hi—want to chat?"}`.trim() || "Hi—want to chat?";
+        const characterId = `u_${generateId()}`;
+        const character = {
+          id: characterId,
+          name,
+          age: 25,
+          bio,
+          starter,
+          avatarUrl: record.portraitUrl,
+          heroUrl: record.portraitUrl,
+          tags: personality.slice(0, 3),
+          stats: { heat: 0, online: true },
+          ownerKey: accountKey,
+          isPublic: Boolean(isPublic),
+          profile: { ...appearance },
+        };
+
+        set((s) => {
+          const nextCreations = (Array.isArray(s.characterCreations) ? s.characterCreations : []).map((r) => {
+            if (r.id !== creationId) return r;
+            return { ...r, status: "completed", isPublic: Boolean(isPublic), characterId, updatedAt: Date.now() };
+          });
+          const nextCreated = [character, ...(Array.isArray(s.createdCharacters) ? s.createdCharacters : []).filter((c) => c.id !== character.id)];
+          return { characterCreations: nextCreations, createdCharacters: nextCreated };
+        });
+
+        return { ok: true, characterId, charged: needPay, cost: needPay ? 5 : 0 };
+      },
+
+      addCreationVideo: ({ creationId, slotIndex = -1, prompt = "", url = "" } = {}) =>
+        set((state) => {
+          const list = Array.isArray(state.characterCreations) ? state.characterCreations : [];
+          const next = list.map((r) => {
+            if (r.id !== creationId) return r;
+            const videos = Array.isArray(r.videos) ? r.videos : [];
+            const item = { id: `cv_${generateId()}`, prompt: `${prompt || ""}`.trim(), url: `${url || ""}`, createdAt: Date.now() };
+            const nextVideos =
+              slotIndex >= 0 && slotIndex < 3
+                ? Array.from({ length: 3 })
+                    .map((_, idx) => (idx === slotIndex ? item : videos[idx] || null))
+                    .filter(Boolean)
+                : [...videos, item].slice(0, 3);
+            return { ...r, videos: nextVideos, updatedAt: Date.now() };
+          });
+          return { characterCreations: next };
+        }),
+
+      deleteCharacterCreation: (creationId) =>
+        set((state) => {
+          const id = `${creationId || ""}`;
+          if (!id) return {};
+          const list = Array.isArray(state.characterCreations) ? state.characterCreations : [];
+          const record = list.find((r) => r.id === id);
+          if (!record) return {};
+          const characterId = `${record.characterId || ""}`;
+          return {
+            characterCreations: list.filter((r) => r.id !== id),
+            createdCharacters: characterId
+              ? (Array.isArray(state.createdCharacters) ? state.createdCharacters : []).filter((c) => c?.id !== characterId)
+              : state.createdCharacters,
+            conversations: characterId
+              ? (Array.isArray(state.conversations) ? state.conversations : []).filter((c) => c?.characterId !== characterId)
+              : state.conversations,
+            favoriteCharacters: characterId
+              ? (Array.isArray(state.favoriteCharacters) ? state.favoriteCharacters : []).filter((cid) => cid !== characterId)
+              : state.favoriteCharacters,
+          };
+        }),
 
       upsertCharacter: (character) =>
         set((state) => ({
@@ -271,7 +595,11 @@ export const useAppStore = create(
         session: state.session,
         subscription: state.subscription,
         diamonds: state.diamonds,
+        diamondBreakdown: state.diamondBreakdown,
+        diamondWallets: state.diamondWallets,
+        diamondRewardNotice: state.diamondRewardNotice,
         createdCharacters: state.createdCharacters,
+        characterCreations: state.characterCreations,
         conversations: state.conversations,
         mediaRequests: state.mediaRequests,
         unlockedShortEpisodes: state.unlockedShortEpisodes,

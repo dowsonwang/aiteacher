@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Heart, Lock, Play } from "lucide-react";
 import DiamondIcon from "../components/DiamondIcon.jsx";
+import OnboardingTour from "../components/OnboardingTour.jsx";
 import { shortDramas } from "../data/mock.js";
 import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
@@ -29,6 +30,8 @@ export default function Feed() {
   const getAllCharacters = useAppStore((s) => s.getAllCharacters);
   const openConversationForCharacter = useAppStore((s) => s.openConversationForCharacter);
   const openAuth = useUIStore((s) => s.openAuth);
+  const openShare = useUIStore((s) => s.openShare);
+  const closeShare = useUIStore((s) => s.closeShare);
   const unlockedFeedVideos = useAppStore((s) => s.unlockedFeedVideos);
   const unlockFeedVideo = useAppStore((s) => s.unlockFeedVideo);
 
@@ -97,8 +100,11 @@ export default function Feed() {
   const wheelDelta = useRef(0);
   const [videoVisible, setVideoVisible] = useState(true);
   const [toast, setToast] = useState(null);
-  const [shareOpen, setShareOpen] = useState(false);
   const [selectedClipId, setSelectedClipId] = useState(null);
+  const mainVideoWrapRef = useRef(null);
+  const clipListWrapRef = useRef(null);
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
   const toastTimer = useRef(null);
   const showToast = (type, message) => {
     setToast({ type, message });
@@ -111,6 +117,13 @@ export default function Feed() {
     },
     [],
   );
+
+  useEffect(() => {
+    const canShow = typeof window !== "undefined" && window.matchMedia?.("(min-width: 1024px)")?.matches;
+    if (!canShow) return;
+    const raf = requestAnimationFrame(() => setTourOpen(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   const [activeTab, setActiveTab] = useState("character");
   const [liked, setLiked] = useState(false);
@@ -163,19 +176,10 @@ export default function Feed() {
   }, [items.length]);
 
   useEffect(() => {
-    setShareOpen(false);
+    closeShare();
     const activeId = active?.id || "feed";
     setSelectedClipId(`${activeId}-clip-01`);
-  }, [active?.id]);
-
-  useEffect(() => {
-    if (!shareOpen) return;
-    const onKeyDown = (e) => {
-      if (e.key === "Escape") setShareOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [shareOpen]);
+  }, [active?.id, closeShare]);
 
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(true);
@@ -365,13 +369,43 @@ export default function Feed() {
   if (!active || !character) return null;
 
   const comments = commentsByCharacter[character.id] || [];
+  const tourSteps = [
+    {
+      key: "feed-main-video",
+      target: mainVideoWrapRef.current,
+      title: "浏览更多视频",
+      body: "在主视频区域上下滑动，可切换查看更多精彩内容。",
+    },
+    {
+      key: "feed-clip-list",
+      target: clipListWrapRef.current,
+      title: "解锁更多内容",
+      body: "右侧为该人物的视频列表。点击锁定视频可消耗 5 💎 解锁，观看更多精彩视频。",
+    },
+  ];
 
   return (
     <div className="-mx-6 -my-6 h-[calc(100dvh-56px-48px)] bg-zinc-950 text-white">
+      <OnboardingTour
+        open={tourOpen}
+        step={tourStep}
+        steps={tourSteps}
+        onClose={() => setTourOpen(false)}
+        onNext={() => {
+          const isLast = tourStep >= tourSteps.length - 1;
+          if (isLast) {
+            setTourOpen(false);
+            return;
+          }
+          setTourStep((v) => v + 1);
+        }}
+      />
+
       <div className="h-full min-h-0 grid grid-cols-1 gap-0 lg:grid-cols-[minmax(0,1fr)_420px]">
         <section className="relative h-full min-h-0">
           <div className="flex h-full min-h-0 items-stretch justify-center gap-4 px-6 py-6">
             <div
+              ref={mainVideoWrapRef}
               onWheel={onVideoWheel}
               onClick={() => togglePlay()}
               className={
@@ -472,7 +506,7 @@ export default function Feed() {
               ) : null}
             </div>
 
-            <div className="hidden h-full w-[156px] overflow-hidden lg:block">
+            <div ref={clipListWrapRef} className="hidden h-full w-[156px] overflow-hidden lg:block">
               <div className="h-full min-h-0 overflow-auto pr-1">
                 <div className="space-y-3">
                   {clips.map((clip) => {
@@ -618,7 +652,7 @@ export default function Feed() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setShareOpen(true)}
+                        onClick={() => openShare({ url: shareUrl, title: "分享" })}
                         className="flex-1 rounded-2xl border border-white/25 bg-white/10 px-4 py-3 text-sm font-semibold text-white hover:bg-white/15"
                       >
                         Share
@@ -730,76 +764,6 @@ export default function Feed() {
       {toast ? (
         <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-2xl border border-white/10 bg-zinc-900/90 px-4 py-3 text-sm font-semibold text-white shadow-2xl backdrop-blur">
           {toast.message}
-        </div>
-      ) : null}
-
-      {shareOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setShareOpen(false);
-          }}
-        >
-          <div className="w-full max-w-[420px] rounded-3xl border border-zinc-200 bg-white p-5 shadow-2xl">
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-base font-semibold text-zinc-900">Share</div>
-              <button
-                type="button"
-                onClick={() => setShareOpen(false)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-2">
-              {[
-                { key: "x", label: "X / Twitter" },
-                { key: "ins", label: "Instagram" },
-                { key: "tt", label: "TikTok" },
-                { key: "fb", label: "Facebook" },
-              ].map((p) => (
-                <button
-                  key={p.key}
-                  type="button"
-                  onClick={() => {
-                    showToast("info", `Shared to ${p.label}.`);
-                    setShareOpen(false);
-                  }}
-                  className="flex w-full items-center justify-between rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-left text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-                >
-                  <span>{p.label}</span>
-                  <span className="text-xs font-semibold text-zinc-500">Share</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
-              <div className="text-xs font-semibold text-zinc-500">Link</div>
-              <div className="mt-2 flex items-center gap-2">
-                <input
-                  value={shareUrl}
-                  readOnly
-                  className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(shareUrl || "");
-                      showToast("success", "Link copied.");
-                    } catch {
-                      showToast("error", "Copy failed.");
-                    }
-                  }}
-                  className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-zinc-900 px-4 text-sm font-semibold text-white hover:bg-zinc-800"
-                >
-                  Copy
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       ) : null}
     </div>

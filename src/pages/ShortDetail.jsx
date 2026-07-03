@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Bookmark, ChevronLeft, Heart, Lock, Pause, Play, Share2, SkipForward, X } from "lucide-react";
+import { Bookmark, ChevronLeft, Heart, Lock, Pause, Play, Share2, SkipForward } from "lucide-react";
 import DiamondIcon from "../components/DiamondIcon.jsx";
 import { shortDramas } from "../data/mock.js";
 import { cn } from "../lib/utils.js";
 import { useAppStore } from "../stores/useAppStore.js";
+import { useUIStore } from "../stores/useUIStore.js";
 
 export default function ShortDetail() {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export default function ShortDetail() {
   const unlockShortEpisode = useAppStore((s) => s.unlockShortEpisode);
   const favoriteShorts = useAppStore((s) => s.favoriteShorts);
   const toggleFavoriteShort = useAppStore((s) => s.toggleFavoriteShort);
+  const openShare = useUIStore((s) => s.openShare);
 
   const drama = useMemo(() => shortDramas.find((d) => d.id === id) || shortDramas[0], [id]);
   const [episode, setEpisode] = useState(1);
@@ -80,8 +82,6 @@ export default function ShortDetail() {
   const [liked, setLiked] = useState(false);
   const [likeDelta, setLikeDelta] = useState(0);
   const [saveDelta, setSaveDelta] = useState(0);
-  const [shareOpen, setShareOpen] = useState(false);
-  const [shareUrl, setShareUrl] = useState("");
   const saved = useMemo(() => (Array.isArray(favoriteShorts) ? favoriteShorts.includes(drama.id) : false), [drama.id, favoriteShorts]);
   const workTags = useMemo(() => {
     const tags = Array.isArray(drama.tags) ? drama.tags : [];
@@ -101,19 +101,10 @@ export default function ShortDetail() {
     return 320 + seed * 79;
   }, [drama.id]);
   const displaySaveCount = Math.max(0, baseSaveCount + saveDelta);
-  useEffect(() => {
-    if (!shareOpen) return;
+  const shareUrl = useMemo(() => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    setShareUrl(origin ? `${origin}/shorts/${drama.id}` : `/shorts/${drama.id}`);
-  }, [drama.id, shareOpen]);
-  useEffect(() => {
-    if (!shareOpen) return;
-    const onKeyDown = (e) => {
-      if (e.key === "Escape") setShareOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [shareOpen]);
+    return origin ? `${origin}/shorts/${drama.id}` : `/shorts/${drama.id}`;
+  }, [drama.id]);
 
   const swipeStartYRef = useRef(null);
   const swipeGateRef = useRef(0);
@@ -424,7 +415,7 @@ export default function ShortDetail() {
                 <div className="min-w-[44px] text-xs font-semibold text-zinc-600">{displaySaveCount.toLocaleString()}</div>
                 <button
                   type="button"
-                  onClick={() => setShareOpen(true)}
+                  onClick={() => openShare({ url: shareUrl, title: "分享" })}
                   className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
                   aria-label="Share"
                 >
@@ -479,76 +470,6 @@ export default function ShortDetail() {
       {toast ? (
         <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-900 shadow-xl">
           {toast.message}
-        </div>
-      ) : null}
-
-      {shareOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setShareOpen(false);
-          }}
-        >
-          <div className="w-full max-w-[420px] rounded-3xl border border-zinc-200 bg-white p-5 shadow-2xl">
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-base font-semibold text-zinc-900">Share</div>
-              <button
-                type="button"
-                onClick={() => setShareOpen(false)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-2">
-              {[
-                { key: "x", label: "X / Twitter" },
-                { key: "ins", label: "Instagram" },
-                { key: "tt", label: "TikTok" },
-                { key: "fb", label: "Facebook" },
-              ].map((p) => (
-                <button
-                  key={p.key}
-                  type="button"
-                  onClick={() => {
-                    showToast("info", `Shared to ${p.label}.`);
-                    setShareOpen(false);
-                  }}
-                  className="flex w-full items-center justify-between rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-left text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-                >
-                  <span>{p.label}</span>
-                  <span className="text-xs font-semibold text-zinc-500">Share</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
-              <div className="text-xs font-semibold text-zinc-500">Link</div>
-              <div className="mt-2 flex items-center gap-2">
-                <input
-                  value={shareUrl}
-                  readOnly
-                  className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(shareUrl || "");
-                      showToast("success", "Link copied.");
-                    } catch {
-                      showToast("error", "Copy failed.");
-                    }
-                  }}
-                  className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-zinc-900 px-4 text-sm font-semibold text-white hover:bg-zinc-800"
-                >
-                  Copy
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       ) : null}
     </div>

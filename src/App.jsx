@@ -1,14 +1,12 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, RouterProvider, createBrowserRouter } from "react-router-dom";
 import AppShell from "./layouts/AppShell.jsx";
 import BrowseHome from "./pages/BrowseHome.jsx";
 import Feed from "./pages/Feed.jsx";
 import Shorts from "./pages/Shorts.jsx";
 import ShortDetail from "./pages/ShortDetail.jsx";
 import Favorites from "./pages/Favorites.jsx";
-import CreateEntry from "./pages/CreateEntry.jsx";
-import CreateModeSelect from "./pages/CreateModeSelect.jsx";
-import CreateNormal from "./pages/CreateNormal.jsx";
-import CreateVip from "./pages/CreateVip.jsx";
+import Create from "./pages/Create.jsx";
+import CreateRecordDetail from "./pages/CreateRecordDetail.jsx";
 import Chat from "./pages/Chat.jsx";
 import ChatRoom from "./pages/ChatRoom.jsx";
 import Subscribe from "./pages/Subscribe.jsx";
@@ -22,38 +20,39 @@ import Article from "./pages/Article.jsx";
 import Blog from "./pages/Blog.jsx";
 import Account from "./pages/Account.jsx";
 
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <AppShell />,
+    children: [
+      { index: true, element: <Navigate to="/browse" replace /> },
+      { path: "browse", element: <BrowseHome /> },
+      { path: "feed", element: <Feed /> },
+      { path: "shorts", element: <Shorts /> },
+      { path: "shorts/:id", element: <ShortDetail /> },
+      { path: "create", element: <Create /> },
+      { path: "create/record/:id", element: <CreateRecordDetail /> },
+      {
+        path: "chat",
+        element: <Chat />,
+        children: [{ path: ":id", element: <ChatRoom /> }],
+      },
+      { path: "favorites", element: <Favorites /> },
+      { path: "subscribe", element: <Subscribe /> },
+      { path: "subscription", element: <SubscriptionManagement /> },
+      { path: "live", element: <LiveList /> },
+      { path: "live/:id", element: <LiveRoom /> },
+      { path: "privacy", element: <Privacy /> },
+      { path: "terms", element: <Terms /> },
+      { path: "faq", element: <FAQ /> },
+      { path: "articles/:slug", element: <Article /> },
+      { path: "blog", element: <Blog /> },
+      { path: "account", element: <Account /> },
+      { path: "*", element: <Navigate to="/browse" replace /> },
+    ],
+  },
+]);
+
 export default function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<AppShell />}>
-          <Route index element={<Navigate to="/browse" replace />} />
-          <Route path="browse" element={<BrowseHome />} />
-          <Route path="feed" element={<Feed />} />
-          <Route path="shorts" element={<Shorts />} />
-          <Route path="shorts/:id" element={<ShortDetail />} />
-          <Route path="create" element={<CreateEntry />}>
-            <Route index element={<CreateModeSelect />} />
-            <Route path="normal" element={<CreateNormal />} />
-            <Route path="vip" element={<CreateVip />} />
-          </Route>
-          <Route path="chat" element={<Chat />}>
-            <Route path=":id" element={<ChatRoom />} />
-          </Route>
-          <Route path="favorites" element={<Favorites />} />
-          <Route path="subscribe" element={<Subscribe />} />
-          <Route path="subscription" element={<SubscriptionManagement />} />
-          <Route path="live" element={<LiveList />} />
-          <Route path="live/:id" element={<LiveRoom />} />
-          <Route path="privacy" element={<Privacy />} />
-          <Route path="terms" element={<Terms />} />
-          <Route path="faq" element={<FAQ />} />
-          <Route path="articles/:slug" element={<Article />} />
-          <Route path="blog" element={<Blog />} />
-          <Route path="account" element={<Account />} />
-          <Route path="*" element={<Navigate to="/browse" replace />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
-  );
+  return <RouterProvider router={router} />;
 }

@@ -5,14 +5,17 @@ import {
   Flag,
   Gem,
   Image as ImageIcon,
+  Heart,
   Play,
   Send,
+  Share2,
   Sparkles,
   Video as VideoIcon,
 } from "lucide-react";
 import { cn } from "../lib/utils.js";
 import { t } from "../i18n/i18n.js";
 import Modal from "../components/Modal.jsx";
+import OnboardingTour from "../components/OnboardingTour.jsx";
 import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
 import { shortDramas } from "../data/mock.js";
@@ -73,6 +76,7 @@ export default function ChatRoom() {
   const language = useAppStore((s) => s.language);
   const session = useAppStore((s) => s.session);
   const openAuth = useUIStore((s) => s.openAuth);
+  const openShare = useUIStore((s) => s.openShare);
   const getAllCharacters = useAppStore((s) => s.getAllCharacters);
   const conversations = useAppStore((s) => s.conversations);
   const sendMessage = useAppStore((s) => s.sendMessage);
@@ -80,6 +84,8 @@ export default function ChatRoom() {
   const mediaRequests = useAppStore((s) => s.mediaRequests);
   const consumeMediaRequest = useAppStore((s) => s.consumeMediaRequest);
   const getMediaRequestSummary = useAppStore((s) => s.getMediaRequestSummary);
+  const favoriteCharacters = useAppStore((s) => s.favoriteCharacters);
+  const toggleFavoriteCharacter = useAppStore((s) => s.toggleFavoriteCharacter);
 
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
@@ -105,6 +111,10 @@ export default function ChatRoom() {
     () => characters.find((c) => c.id === conversation?.characterId),
     [characters, conversation?.characterId],
   );
+  const shareUrl = useMemo(() => {
+    const origin = typeof window !== "undefined" ? window.location?.origin || "" : "";
+    return origin ? `${origin}/chat/${conversation?.id || ""}` : `/chat/${conversation?.id || ""}`;
+  }, [conversation?.id]);
 
   const assetVersion = useMemo(() => Date.now().toString(), []);
   const aiImageSrc = useMemo(() => `/images/chat/ai-reply-01.png?v=${assetVersion}`, [assetVersion]);
@@ -118,6 +128,9 @@ export default function ChatRoom() {
   const [mediaOpen, setMediaOpen] = useState(false);
   const [mediaItem, setMediaItem] = useState(null);
   const messagesRef = useRef(null);
+  const requestButtonsRef = useRef(null);
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
 
   const openMedia = (item) => {
     if (!item) return;
@@ -176,6 +189,10 @@ export default function ChatRoom() {
   };
 
   const panelBlocks = useMemo(() => (character ? pickProfileBlocks(character.id) : []), [character?.id]);
+  const isFavorited = useMemo(
+    () => (Array.isArray(favoriteCharacters) ? favoriteCharacters.includes(character?.id) : false),
+    [character?.id, favoriteCharacters],
+  );
 
   const shorts = useMemo(() => {
     if (!character) return [];
@@ -219,8 +236,31 @@ export default function ChatRoom() {
     return () => window.cancelAnimationFrame(raf);
   }, [conversation.messages.length, typing]);
 
+  useEffect(() => {
+    const raf = window.requestAnimationFrame(() => setTourOpen(true));
+    return () => window.cancelAnimationFrame(raf);
+  }, []);
+
   return (
     <div className="grid h-full min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <OnboardingTour
+        open={tourOpen}
+        step={tourStep}
+        steps={[
+          {
+            key: "chat-requests",
+            target: requestButtonsRef.current,
+            title: "请求图片与视频",
+            body: "你可以向对方发起图片或视频请求，让对话内容更生动、更有趣。",
+          },
+        ]}
+        onClose={() => setTourOpen(false)}
+        onNext={() => {
+          setTourOpen(false);
+          setTourStep(0);
+        }}
+      />
+
       {toast ? (
         <div className="pointer-events-none fixed left-1/2 top-6 z-[60] -translate-x-1/2">
           <div
@@ -453,7 +493,7 @@ export default function ChatRoom() {
         </div>
 
         <div className="border-t border-zinc-200 px-5 py-4">
-          <div className="flex flex-wrap items-center gap-2">
+          <div ref={requestButtonsRef} className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => requestMedia("image")}
@@ -553,6 +593,28 @@ export default function ChatRoom() {
                       className="h-full w-full object-cover"
                       onError={() => setProfileImgSrc(profileFallbackSrc)}
                     />
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleFavoriteCharacter(character.id)}
+                      className={cn(
+                        "inline-flex items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-sm font-semibold",
+                        isFavorited ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50",
+                      )}
+                    >
+                      <Heart className="h-4 w-4" />
+                      收藏
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openShare({ url: shareUrl, title: "分享" })}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+                    >
+                      <Share2 className="h-4 w-4" />
+                      分享
+                    </button>
                   </div>
 
                   <div className="mt-4 flex items-start gap-3">
