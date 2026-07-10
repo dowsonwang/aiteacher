@@ -289,10 +289,6 @@ export default function BrowseHome() {
                       )}
                     />
 
-                    <div className="absolute left-2 top-2 rounded-full bg-black/45 px-2 py-1 text-[11px] font-semibold text-white/85 backdrop-blur">
-                      {d.episodes} eps
-                    </div>
-
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent px-3 py-2">
                       <div className="truncate text-sm font-semibold text-white">{d.title}</div>
                     </div>

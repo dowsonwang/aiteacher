@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useBlocker, useNavigate, useSearchParams } from "react-router-dom";
-import { Check, ChevronLeft, ChevronRight, Globe2, Image as ImageIcon, Lock, Sparkles, Video } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Globe2, Image as ImageIcon, Lock, RefreshCw, Sparkles, Video, X } from "lucide-react";
 import DiamondIcon from "../components/DiamondIcon.jsx";
 import Modal from "../components/Modal.jsx";
 import { cn } from "../lib/utils.js";
@@ -71,7 +71,58 @@ const APPEARANCE_OPTIONS = {
   ],
   countries: ["USA", "Japan", "Korea", "France", "Canada", "Germany", "UK"],
   nameSuggestions: ["Luna", "Nova", "Mina", "Ava", "Sofia", "Kai", "Leo", "Ethan", "Nora", "Maya"],
-  personalitySuggestions: ["Warm", "Playful", "Supportive", "Confident", "Calm", "Funny", "Gentle", "Flirty"],
+  personalitySuggestions: [
+    "Warm",
+    "Gentle",
+    "Caring",
+    "Supportive",
+    "Patient",
+    "Calm",
+    "Thoughtful",
+    "Kind",
+    "Sweet",
+    "Soft-spoken",
+    "Cheerful",
+    "Playful",
+    "Funny",
+    "Witty",
+    "Humorous",
+    "Energetic",
+    "Lively",
+    "Optimistic",
+    "Curious",
+    "Adventurous",
+    "Confident",
+    "Bold",
+    "Brave",
+    "Independent",
+    "Ambitious",
+    "Reliable",
+    "Loyal",
+    "Honest",
+    "Sincere",
+    "Mature",
+    "Elegant",
+    "Graceful",
+    "Romantic",
+    "Flirty",
+    "Charming",
+    "Mysterious",
+    "Dreamy",
+    "Artistic",
+    "Creative",
+    "Intellectual",
+    "Smart",
+    "Rational",
+    "Focused",
+    "Disciplined",
+    "Organized",
+    "Easygoing",
+    "Relaxed",
+    "Shy",
+    "Reserved",
+    "Sensitive",
+  ],
 };
 
 const pickRandom = (list) => list[Math.floor(Math.random() * list.length)];
@@ -282,7 +333,7 @@ export default function Create() {
   const [country, setCountry] = useState("");
   const [age, setAge] = useState("");
   const [personality, setPersonality] = useState([]);
-  const [personalityInput, setPersonalityInput] = useState("");
+  const [personalityPage, setPersonalityPage] = useState(0);
   const [isPublic, setIsPublic] = useState(true);
   const [texts, setTexts] = useState({ relation: "", scenario: "", firstMessage: "", example: "" });
   const [editingPiece, setEditingPiece] = useState(null);
@@ -325,7 +376,6 @@ export default function Create() {
     setCountry(a.country || "");
     setAge(a.age !== undefined && a.age !== null && `${a.age}` !== "" ? `${a.age}` : "");
     setPersonality(Array.isArray(a.personality) ? a.personality : []);
-    setPersonalityInput("");
     setTexts(record.texts || { relation: "", scenario: "", firstMessage: "", example: "" });
     setIsPublic(record.isPublic === undefined ? true : Boolean(record.isPublic));
     setPromptText(record.portraitPrompt || "");
@@ -418,6 +468,12 @@ export default function Create() {
   };
 
   const groupOrder = ["gender", "race", "body", "eye", "hairStyle", "hairColor", "basic", "personality"];
+  const personalityBatchSize = 10;
+  const personalityPageCount = Math.ceil(options.personalitySuggestions.length / personalityBatchSize);
+  const personalityPageStart = personalityPage * personalityBatchSize;
+  const visiblePersonalityOptions = [...options.personalitySuggestions.slice(personalityPageStart), ...options.personalitySuggestions.slice(0, personalityPageStart)]
+    .filter((item) => !personality.includes(item))
+    .slice(0, personalityBatchSize);
   const groupTitles = {
     gender: "性别",
     race: "人种",
@@ -846,10 +902,7 @@ export default function Create() {
           <div className="mt-6">
             <div className="mx-auto max-w-2xl rounded-[26px] border border-zinc-200 bg-white p-5 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-semibold text-zinc-900">① 填选内容</div>
-                  <div className="mt-1 text-xs text-zinc-500">已为你随机默认一套，从上往下逐项确认或修改即可。</div>
-                </div>
+                <div className="text-sm font-semibold text-zinc-900">外貌设定</div>
               </div>
 
               <div className="mt-4 space-y-4">
@@ -1042,7 +1095,7 @@ export default function Create() {
                                     className="mt-2 h-10 w-full rounded-2xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-zinc-900"
                                   />
                                   <div className="mt-2 flex flex-wrap gap-2">
-                                    {options.nameSuggestions.map((n) => (
+                                    {options.nameSuggestions.slice(0, 5).map((n) => (
                                       <button
                                         key={n}
                                         type="button"
@@ -1108,15 +1161,16 @@ export default function Create() {
                                       key={p}
                                       type="button"
                                       onClick={() => setPersonality(personality.filter((x) => x !== p))}
-                                      className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-3 py-1.5 text-sm font-semibold text-white"
+                                      className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-zinc-700"
+                                      aria-label={`删除性格 ${p}`}
                                     >
-                                      <Check className="h-4 w-4" />
                                       {p}
+                                      <X className="h-3.5 w-3.5" />
                                     </button>
                                   ))}
                                 </div>
                                 <div className="mt-2 flex flex-wrap gap-2">
-                                  {options.personalitySuggestions.map((p) => {
+                                  {visiblePersonalityOptions.map((p) => {
                                     const selected = personality.includes(p);
                                     const disabled = !selected && personality.length >= 3;
                                     return (
@@ -1139,36 +1193,14 @@ export default function Create() {
                                     );
                                   })}
                                 </div>
-                                <div className="mt-2 flex flex-wrap gap-2">
-                                  <input
-                                    value={personalityInput}
-                                    onChange={(e) => setPersonalityInput(e.target.value)}
-                                    placeholder="输入自定义性格（例如：Curious）"
-                                    className="h-10 w-full rounded-2xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-zinc-900 sm:flex-1"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const next = `${personalityInput || ""}`.trim();
-                                      if (!next) return;
-                                      if (personality.includes(next)) {
-                                        setPersonalityInput("");
-                                        return;
-                                      }
-                                      if (personality.length >= 3) return;
-                                      setPersonality([...personality, next]);
-                                      setPersonalityInput("");
-                                    }}
-                                    disabled={!personalityInput.trim() || personality.length >= 3}
-                                    className={cn(
-                                      "inline-flex h-10 items-center justify-center rounded-2xl px-4 text-sm font-semibold",
-                                      !personalityInput.trim() || personality.length >= 3 ? "bg-zinc-200 text-zinc-500" : "bg-zinc-900 text-white hover:bg-zinc-800",
-                                    )}
-                                  >
-                                    添加
-                                  </button>
-                                </div>
-                                <div className="mt-2 text-xs text-zinc-500">可从建议中选择，也可输入自定义；总数最多 3 个。</div>
+                                <button
+                                  type="button"
+                                  onClick={() => setPersonalityPage((v) => (v + 1) % personalityPageCount)}
+                                  className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-zinc-800 hover:shadow-md"
+                                >
+                                  <RefreshCw className="h-4 w-4" />
+                                  换一换
+                                </button>
                               </div>
                             ) : null}
 
