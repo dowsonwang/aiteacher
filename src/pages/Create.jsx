@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useBlocker, useNavigate, useSearchParams } from "react-router-dom";
 import { Check, ChevronLeft, ChevronRight, Globe2, Image as ImageIcon, Lock, RefreshCw, Sparkles, Video, X } from "lucide-react";
+import AvatarCropper from "../components/AvatarCropper.jsx";
 import DiamondIcon from "../components/DiamondIcon.jsx";
 import Modal from "../components/Modal.jsx";
 import { cn } from "../lib/utils.js";
@@ -573,7 +574,7 @@ export default function Create() {
           : fixedPortraitUrls[0];
     const url = next;
     persistAppearance("portrait");
-    updateCharacterCreation(record.id, { portraitUrl: url, portraitPrompt: promptText });
+    updateCharacterCreation(record.id, { portraitUrl: url, portraitPrompt: promptText, avatarUrl: "", avatarCrop: null });
   };
 
   const onToPortraitStep = () => {
@@ -607,6 +608,10 @@ export default function Create() {
       showToast("error", "请先生成形象");
       return;
     }
+    if (!record.avatarUrl) {
+      showToast("error", "请先裁剪并保存人物头像");
+      return;
+    }
     persistAppearance("description");
     updateCharacterCreation(record.id, { characterIdea, status: "description" });
   };
@@ -626,6 +631,7 @@ export default function Create() {
     if (!res?.ok) {
       if (res?.reason === "diamonds") setPaywallOpen(true);
       if (res?.reason === "login") showToast("error", "请先登录");
+      if (res?.reason === "avatar") showToast("error", "请先裁剪并保存人物头像");
       return;
     }
     showToast("success", res?.charged ? "人物已创建（已扣 5 钻石）" : "人物已创建（首个免费）");
@@ -1216,7 +1222,7 @@ export default function Create() {
         ) : null}
 
         {record.status === "portrait" ? (
-          <div className="mx-auto mt-6 grid max-w-5xl grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="mx-auto mt-6 grid max-w-[1380px] grid-cols-1 gap-5 lg:grid-cols-[minmax(280px,0.8fr)_360px_360px]">
             <div className="flex flex-col rounded-[26px] border border-zinc-200 bg-white p-5">
               <div className="text-sm font-semibold text-zinc-900">预览和修改提示词</div>
               <div className="mt-1 text-xs leading-5 text-zinc-500">这是根据你填选的内容生成的提示词，可自由修改后再生成图片。</div>
@@ -1280,20 +1286,24 @@ export default function Create() {
                   </div>
                 )}
               </div>
-              <div className="mt-4">
-                <button
-                  type="button"
-                  onClick={onToDescriptionStep}
-                  disabled={!record.portraitUrl}
-                  className={cn(
-                    "inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold",
-                    record.portraitUrl ? "bg-emerald-600 text-white hover:bg-emerald-500" : "bg-zinc-200 text-zinc-500",
-                  )}
-                >
-                  下一步
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
+            </div>
+
+            <div className="flex flex-col rounded-[26px] border border-zinc-200 bg-white p-5">
+              <AvatarCropper
+                src={record.portraitUrl}
+                initialCrop={record.avatarCrop}
+                onConfirmAndNext={({ avatarUrl, crop }) => {
+                  updateCharacterCreation(record.id, {
+                    appearance: buildAppearancePayload(),
+                    avatarUrl,
+                    avatarCrop: crop,
+                    characterIdea,
+                    status: "description",
+                  });
+                  showToast("success", "头像已保存");
+                }}
+                onError={() => showToast("error", "头像裁剪失败，请重试")}
+              />
             </div>
           </div>
         ) : null}

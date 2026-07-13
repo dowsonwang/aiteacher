@@ -390,6 +390,8 @@ export const useAppStore = create(
             personality: [],
           },
           portraitUrl: "",
+          avatarUrl: "",
+          avatarCrop: null,
           characterIdea: "",
           texts: { relation: "", scenario: "", firstMessage: "", example: "" },
           isPublic: false,
@@ -421,6 +423,7 @@ export const useAppStore = create(
         const list = Array.isArray(state.characterCreations) ? state.characterCreations : [];
         const record = list.find((r) => r.id === creationId);
         if (!record) return { ok: false, reason: "invalid" };
+        if (!record.avatarUrl) return { ok: false, reason: "avatar" };
 
         const myCreated = (Array.isArray(state.createdCharacters) ? state.createdCharacters : []).filter((c) => c?.ownerKey === accountKey);
         const needPay = myCreated.length >= 1;
@@ -442,7 +445,7 @@ export const useAppStore = create(
           age: 25,
           bio,
           starter,
-          avatarUrl: record.portraitUrl,
+          avatarUrl: record.avatarUrl || record.portraitUrl,
           heroUrl: record.portraitUrl,
           tags: personality.slice(0, 3),
           stats: { heat: 0, online: true },
