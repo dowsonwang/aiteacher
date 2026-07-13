@@ -200,6 +200,32 @@ export default function ChatRoom() {
     return matchedShorts.length ? matchedShorts.slice(0, 6) : shortDramas.slice(0, 6);
   }, [character?.name]);
 
+  const profileFallbackSrc = useMemo(() => `/images/create/results/standard/hero-1.png?v=${assetVersion}`, [assetVersion]);
+  const [profileImgSrc, setProfileImgSrc] = useState(
+    character?.heroUrl || character?.fallbackUrl || character?.avatarUrl || profileFallbackSrc,
+  );
+
+  useEffect(() => {
+    if (!character) return;
+    setProfileImgSrc(character.heroUrl || character.fallbackUrl || character.avatarUrl || profileFallbackSrc);
+  }, [character, profileFallbackSrc]);
+
+  useEffect(() => {
+    if (!conversation || !session.isLoggedIn) return;
+    const el = messagesRef.current;
+    if (!el) return;
+    const raf = window.requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [conversation, session.isLoggedIn, typing]);
+
+  useEffect(() => {
+    if (!conversation || !character || !session.isLoggedIn) return;
+    const raf = window.requestAnimationFrame(() => setTourOpen(true));
+    return () => window.cancelAnimationFrame(raf);
+  }, [character, conversation, session.isLoggedIn]);
+
   if (!conversation || !character) {
     return <div className="flex h-full items-center justify-center text-sm text-zinc-500">{t(language, "chat_not_found")}</div>;
   }
@@ -218,28 +244,6 @@ export default function ChatRoom() {
       </div>
     );
   }
-
-  const profileFallbackSrc = useMemo(() => `/images/create/results/standard/hero-1.png?v=${assetVersion}`, [assetVersion]);
-  const [profileImgSrc, setProfileImgSrc] = useState(
-    character.heroUrl || character.fallbackUrl || character.avatarUrl || profileFallbackSrc,
-  );
-  useEffect(() => {
-    setProfileImgSrc(character.heroUrl || character.fallbackUrl || character.avatarUrl || profileFallbackSrc);
-  }, [character.avatarUrl, character.fallbackUrl, character.heroUrl, profileFallbackSrc]);
-
-  useEffect(() => {
-    const el = messagesRef.current;
-    if (!el) return;
-    const raf = window.requestAnimationFrame(() => {
-      el.scrollTop = el.scrollHeight;
-    });
-    return () => window.cancelAnimationFrame(raf);
-  }, [conversation.messages.length, typing]);
-
-  useEffect(() => {
-    const raf = window.requestAnimationFrame(() => setTourOpen(true));
-    return () => window.cancelAnimationFrame(raf);
-  }, []);
 
   return (
     <div className="grid h-full min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px]">

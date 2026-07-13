@@ -21,14 +21,6 @@ const demoVideos = ["/videos/characters/demo-1.mp4", "/videos/characters/demo-2.
 
 const optionLabel = (options, value) => options.find((o) => o.value === value)?.label || value;
 
-const PORTRAIT_PROMPT_GUIDE = [
-  { icon: "👤", title: "外貌特征", desc: "脸型、五官、发型发色、肤色、身材等" },
-  { icon: "👗", title: "服装穿搭", desc: "上衣、裙装、配饰、风格（休闲/职业/古风）" },
-  { icon: "😊", title: "表情神态", desc: "微笑、认真、慵懒等情绪与气质氛围" },
-  { icon: "🏞️", title: "场景背景", desc: "室内、街景、自然、纯色背景等环境" },
-  { icon: "🎬", title: "画面风格", desc: "写实、动漫、光影、镜头景别（半身/特写）" },
-];
-
 const APPEARANCE_OPTIONS = {
   gender: [
     { value: "Male", label: "男" },
@@ -189,26 +181,21 @@ const buildPortraitPrompt = (appearance, seed = "") => {
   return parts.join(", ");
 };
 
-const generateTexts = (appearance) => {
+const generateTexts = (appearance, characterIdea) => {
   const name = `${appearance.name || "Character"}`.trim() || "Character";
   const personality = (Array.isArray(appearance.personality) ? appearance.personality : []).slice(0, 3).join(", ");
   const country = appearance.country || "your country";
-  const relation = `You are chatting with ${name} as a close companion.`;
-  const scenario = `A private, friendly conversation set in ${country}. The tone is warm, playful, and safe.`;
-  const extra = personality ? ` Personality keywords: ${personality}.` : "";
-  const firstMessage = `*${name} looks up with a gentle smile.* Hi, I'm ${name}. Want to talk for a minute? I've been hoping someone would stop by.`;
+  const idea = `${characterIdea || ""}`.trim() || "Build a natural relationship and conversation style based on the character’s identity and personality.";
+  const relation = `You are chatting with ${name} as a close companion shaped by this character concept: ${idea}`;
+  const scenario = `A private conversation set in ${country}, guided by this concept: ${idea}${personality ? ` The tone reflects ${personality}.` : ""}`;
+  const firstMessage = `*${name} looks up, ready to embody the personality you imagined.* Hi, I'm ${name}. ${idea}`;
   const example = [
-    `User: I had a long day.`,
-    `${name}: *${name} leans in, listening carefully.* That sounds exhausting. Tell me one thing that went well today, even a small one. I'd love to hear it.`,
-    `User: Not much happened, honestly.`,
-    `${name}: That's okay. *She offers a warm, patient look.* We can start slow. If you want, we can practice one short sentence together.`,
+    `User: Tell me what makes you different.`,
+    `${name}: *${name} responds with a thoughtful expression.* ${idea} That's the side of me you'll notice whenever we talk.`,
+    `User: How would you spend time with me?`,
+    `${name}: I'd follow the kind of relationship and atmosphere you imagined for us. *${name} smiles softly.* We can let every conversation grow from there.`,
   ].join("\n");
-  return {
-    relation: `${relation}${extra}`,
-    scenario,
-    firstMessage,
-    example,
-  };
+  return { relation, scenario, firstMessage, example };
 };
 
 const splitSentences = (text) => {
@@ -335,6 +322,7 @@ export default function Create() {
   const [personality, setPersonality] = useState([]);
   const [personalityPage, setPersonalityPage] = useState(0);
   const [isPublic, setIsPublic] = useState(true);
+  const [characterIdea, setCharacterIdea] = useState("");
   const [texts, setTexts] = useState({ relation: "", scenario: "", firstMessage: "", example: "" });
   const [editingPiece, setEditingPiece] = useState(null);
   const [videoPrompts, setVideoPrompts] = useState(["", "", ""]);
@@ -376,6 +364,7 @@ export default function Create() {
     setCountry(a.country || "");
     setAge(a.age !== undefined && a.age !== null && `${a.age}` !== "" ? `${a.age}` : "");
     setPersonality(Array.isArray(a.personality) ? a.personality : []);
+    setCharacterIdea(record.characterIdea || "");
     setTexts(record.texts || { relation: "", scenario: "", firstMessage: "", example: "" });
     setIsPublic(record.isPublic === undefined ? true : Boolean(record.isPublic));
     setPromptText(record.portraitPrompt || "");
@@ -393,7 +382,7 @@ export default function Create() {
   const majorStep = useMemo(() => {
     if (!record) return 0;
     if (record.status === "gender" || record.status === "appearance" || record.status === "portrait") return 1;
-    if (record.status === "text") return 2;
+    if (record.status === "description" || record.status === "text") return 2;
     if (record.status === "video") return 3;
     if (record.status === "completed") return 2;
     return 1;
@@ -489,6 +478,7 @@ export default function Create() {
     if (!record || record.characterId) return;
     const patch = {
       appearance: buildAppearancePayload(),
+      characterIdea,
       texts: majorStep >= 2 ? { ...texts } : record.texts,
       isPublic: Boolean(isPublic),
       portraitPrompt: promptText,
@@ -497,7 +487,7 @@ export default function Create() {
         majorStep === 3
           ? "video"
           : majorStep === 2
-            ? "text"
+            ? record.status === "description" ? "description" : "text"
             : gender || record.portraitUrl
               ? "appearance"
               : "gender",
@@ -607,7 +597,7 @@ export default function Create() {
     updateCharacterCreation(record.id, { appearance: buildAppearancePayload(), status: "appearance" });
   };
 
-  const onToTextStep = () => {
+  const onToDescriptionStep = () => {
     if (!record) return;
     if (!name.trim()) {
       showToast("error", "请先填写姓名");
@@ -617,16 +607,16 @@ export default function Create() {
       showToast("error", "请先生成形象");
       return;
     }
-    persistAppearance("text");
-    const a = {
-      name,
-      country,
-      personality,
-    };
-    const hasExisting = record.texts?.relation || record.texts?.firstMessage;
-    const nextTexts = hasExisting ? record.texts : generateTexts(a);
+    persistAppearance("description");
+    updateCharacterCreation(record.id, { characterIdea, status: "description" });
+  };
+
+  const onGenerateCharacterTexts = () => {
+    if (!record) return;
+    const idea = characterIdea.trim();
+    const nextTexts = generateTexts({ name, country, personality }, idea);
     setTexts(nextTexts);
-    updateCharacterCreation(record.id, { texts: nextTexts, status: "text" });
+    updateCharacterCreation(record.id, { characterIdea: idea, texts: nextTexts, status: "text" });
   };
 
   const onFinishCharacter = () => {
@@ -667,9 +657,9 @@ export default function Create() {
     });
   };
 
-  const onBackToPortrait = () => {
+  const onBackToDescription = () => {
     if (!record) return;
-    updateCharacterCreation(record.id, { texts, isPublic: Boolean(isPublic), status: "portrait" });
+    updateCharacterCreation(record.id, { characterIdea, texts, isPublic: Boolean(isPublic), status: "description" });
   };
 
   const onStartChat = () => {
@@ -1226,23 +1216,7 @@ export default function Create() {
         ) : null}
 
         {record.status === "portrait" ? (
-          <div className="mx-auto mt-6 grid max-w-6xl grid-cols-1 gap-5 lg:grid-cols-[260px_minmax(0,1fr)_320px]">
-            <div className="flex flex-col rounded-[26px] border border-zinc-200 bg-white p-5">
-              <div className="text-sm font-semibold text-zinc-900">提示词怎么写</div>
-              <div className="mt-1 text-xs leading-5 text-zinc-500">不知道写什么？参考下面的维度补充，人物会更完美。</div>
-              <div className="mt-4 flex flex-col gap-3">
-                {PORTRAIT_PROMPT_GUIDE.map((item) => (
-                  <div key={item.title} className="rounded-2xl border border-zinc-100 bg-zinc-50/70 p-3">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-zinc-900">
-                      <span className="text-base leading-none">{item.icon}</span>
-                      {item.title}
-                    </div>
-                    <div className="mt-1 text-xs leading-5 text-zinc-500">{item.desc}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
+          <div className="mx-auto mt-6 grid max-w-5xl grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
             <div className="flex flex-col rounded-[26px] border border-zinc-200 bg-white p-5">
               <div className="text-sm font-semibold text-zinc-900">预览和修改提示词</div>
               <div className="mt-1 text-xs leading-5 text-zinc-500">这是根据你填选的内容生成的提示词，可自由修改后再生成图片。</div>
@@ -1309,7 +1283,7 @@ export default function Create() {
               <div className="mt-4">
                 <button
                   type="button"
-                  onClick={onToTextStep}
+                  onClick={onToDescriptionStep}
                   disabled={!record.portraitUrl}
                   className={cn(
                     "inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold",
@@ -1319,6 +1293,61 @@ export default function Create() {
                   下一步
                   <ChevronRight className="h-4 w-4" />
                 </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {record.status === "description" ? (
+          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="flex flex-col rounded-[26px] border border-zinc-200 bg-white p-5 sm:p-6">
+              <div className="text-lg font-semibold text-zinc-900">写下你们的关系与对话风格</div>
+              <div className="mt-2 text-sm leading-6 text-zinc-500">你可以写下你和 TA 的关系、TA 的“灵魂/核心气质”，以及希望 TA 如何与你对话（语气、边界、节奏）。此项选填，不填写也可以直接生成。</div>
+              <textarea
+                value={characterIdea}
+                onChange={(e) => setCharacterIdea(e.target.value)}
+                placeholder={`例如：
+关系：她是我长期合作的私人医生，也是我最信任的倾诉对象。
+灵魂/气质：外冷内热，专业克制，但对我会格外温柔且坚定。
+对话效果：希望她说话简洁、有安全感；在我焦虑时先安抚再给建议；偶尔带一点轻松的玩笑，但不越界。`}
+                maxLength={1000}
+                className="mt-5 min-h-[300px] w-full flex-1 resize-none rounded-3xl border border-zinc-200 bg-zinc-50/60 px-5 py-4 text-sm leading-7 text-zinc-900 outline-none transition focus:border-zinc-900 focus:bg-white"
+              />
+              <div className="mt-2 text-right text-xs text-zinc-400">{characterIdea.length}/1000</div>
+              <div className="mt-5 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => updateCharacterCreation(record.id, { characterIdea, status: "portrait" })}
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  上一步
+                </button>
+                <button
+                  type="button"
+                  onClick={onGenerateCharacterTexts}
+                  className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-5 text-sm font-semibold text-white transition hover:bg-zinc-800"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  生成人物设定
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col rounded-[26px] border border-zinc-200 bg-white p-4">
+              <div className="text-sm font-semibold text-zinc-900">人物预览</div>
+              <div className="mx-auto mt-3 aspect-[9/16] h-[46vh] max-h-[440px] w-full overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-100">
+                {record.portraitUrl ? (
+                  <img src={record.portraitUrl} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.src = recordFallbackUrl; }} />
+                ) : null}
+              </div>
+              <div className="mt-3 rounded-2xl border border-zinc-200 bg-white p-3">
+                <div className="text-sm font-semibold text-zinc-900">{record.appearance?.name || "未命名人物"}</div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(record.appearance?.personality || []).slice(0, 3).map((p) => (
+                    <span key={p} className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700">{p}</span>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -1506,7 +1535,7 @@ export default function Create() {
               <div className="mt-3 flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={onBackToPortrait}
+                  onClick={onBackToDescription}
                   className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
                 >
                   <ChevronLeft className="h-4 w-4" />

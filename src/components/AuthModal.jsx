@@ -6,8 +6,8 @@ import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
 
 const avatarFromName = (name) =>
-  `https://coreva-normal.trae.ai/api/ide/v1/text_to_image?prompt=${encodeURIComponent(
-    `Minimal studio portrait avatar, calm lighting, neutral background, realistic, high quality, no text, person name: ${name || "User"}`,
+  `https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=${encodeURIComponent(
+    `Friendly cartoon profile avatar of an adult, expressive eyes, clean rounded illustration, warm coral and sky blue palette, simple soft background, centered head and shoulders, polished app icon, no text, person name: ${name || "User"}`,
   )}&image_size=square`;
 
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);

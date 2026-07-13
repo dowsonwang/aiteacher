@@ -390,6 +390,7 @@ export const useAppStore = create(
             personality: [],
           },
           portraitUrl: "",
+          characterIdea: "",
           texts: { relation: "", scenario: "", firstMessage: "", example: "" },
           isPublic: false,
           characterId: "",

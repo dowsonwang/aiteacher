@@ -15,6 +15,11 @@ const planLabel = (planId) => {
   return "Subscription";
 };
 
+const cartoonAvatarUrl = (name) =>
+  `https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=${encodeURIComponent(
+    `Friendly cartoon profile avatar of an adult, expressive eyes, clean rounded illustration, warm coral and sky blue palette, simple soft background, centered head and shoulders, polished app icon, no text, person name: ${name || "User"}`,
+  )}&image_size=square`;
+
 export default function TopBar() {
   const navigate = useNavigate();
   const language = useAppStore((s) => s.language);
@@ -28,6 +33,10 @@ export default function TopBar() {
   const dismissDiamondRewardNotice = useAppStore((s) => s.dismissDiamondRewardNotice);
   const openAuth = useUIStore((s) => s.openAuth);
   const openLanguage = useUIStore((s) => s.openLanguage);
+
+  const profileAvatarUrl = session.avatarUrl?.startsWith("data:image/")
+    ? session.avatarUrl
+    : cartoonAvatarUrl(session.displayName);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [diamondMenuOpen, setDiamondMenuOpen] = useState(false);
@@ -287,8 +296,8 @@ export default function TopBar() {
             >
               <img
                 alt="User"
-                src={session.avatarUrl}
-                className="h-6 w-6 rounded-full object-cover"
+                src={profileAvatarUrl}
+                className="h-7 w-7 rounded-full border border-zinc-200 bg-sky-50 object-cover"
               />
               <span className="text-sm font-medium text-zinc-900">Profile</span>
             </button>
