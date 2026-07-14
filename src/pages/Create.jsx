@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useBlocker, useNavigate, useSearchParams } from "react-router-dom";
-import { Check, ChevronLeft, ChevronRight, Globe2, Image as ImageIcon, Lock, RefreshCw, Sparkles, Video, X } from "lucide-react";
-import AvatarCropper from "../components/AvatarCropper.jsx";
+import { Check, ChevronLeft, ChevronRight, Globe2, Image as ImageIcon, Lock, RefreshCw, Sparkles, X } from "lucide-react";
 import DiamondIcon from "../components/DiamondIcon.jsx";
 import Modal from "../components/Modal.jsx";
 import { cn } from "../lib/utils.js";
@@ -18,8 +17,6 @@ const heroBackgroundUrl = imageUrl(
 
 const fixedPortraitUrls = ["/images/create/fixed-portrait.png", "/images/create/fixed-portrait-2.png"];
 const recordFallbackUrl = "/images/chat/ai-reply-01.png";
-const demoVideos = ["/videos/characters/demo-1.mp4", "/videos/characters/demo-2.mp4", "/videos/characters/demo-3.mp4"];
-
 const optionLabel = (options, value) => options.find((o) => o.value === value)?.label || value;
 
 const APPEARANCE_OPTIONS = {
@@ -148,19 +145,7 @@ const buildRandomAppearance = () => ({
   personality: pickRandomMany(APPEARANCE_OPTIONS.personalitySuggestions, 3),
 });
 
-const isVideoGeneratingRecord = (record) => {
-  if (!record) return false;
-  const videoCount = Array.isArray(record.videos) ? record.videos.filter((item) => item?.url).length : 0;
-  return record.status === "video" && videoCount < 3;
-};
-
-const getRecordProgressLabel = (record) => {
-  if (!record) return "";
-  const videoCount = Array.isArray(record.videos) ? record.videos.filter((item) => item?.url).length : 0;
-  if (!videoCount) return "未生成视频";
-  if (videoCount < 3) return "视频生成中";
-  return "已完成";
-};
+const getRecordProgressLabel = () => "已完成";
 
 const buildPortraitPrompt = (appearance, seed = "") => {
   const body = appearance.bodyCustom || appearance.bodyChoice;
@@ -199,60 +184,6 @@ const generateTexts = (appearance, characterIdea) => {
   return { relation, scenario, firstMessage, example };
 };
 
-const splitSentences = (text) => {
-  const raw = `${text || ""}`.trim();
-  if (!raw) return [];
-  const matches = raw.match(/[^.!?。！？]+[.!?。！？]*\s*/g);
-  const sentences = (matches || [raw]).map((s) => s.trim()).filter(Boolean);
-  return sentences.length ? sentences : [raw];
-};
-
-const splitPieces = (text) => {
-  const raw = `${text || ""}`;
-  const pieces = [];
-  const pushSpeech = (chunk) => {
-    splitSentences(chunk).forEach((s) => pieces.push({ type: "speech", text: s }));
-  };
-  const regex = /\*([^*]+)\*/g;
-  let lastIndex = 0;
-  let match;
-  while ((match = regex.exec(raw)) !== null) {
-    if (match.index > lastIndex) pushSpeech(raw.slice(lastIndex, match.index));
-    pieces.push({ type: "narration", text: match[1].trim() });
-    lastIndex = regex.lastIndex;
-  }
-  if (lastIndex < raw.length) pushSpeech(raw.slice(lastIndex));
-  if (!pieces.length && raw.trim()) pieces.push({ type: "speech", text: raw.trim() });
-  return pieces;
-};
-
-const joinPieces = (pieces) =>
-  (pieces || [])
-    .filter((p) => `${p.text || ""}`.trim())
-    .map((p) => (p.type === "narration" ? `*${p.text.trim()}*` : p.text.trim()))
-    .join(" ");
-
-const parseExampleLines = (text) =>
-  `${text || ""}`
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((line) => {
-      if (/^user\s*:/i.test(line)) {
-        return { speaker: "user", text: line.replace(/^user\s*:/i, "").trim() };
-      }
-      const colonIdx = line.indexOf(":");
-      if (colonIdx > 0) {
-        return { speaker: "character", name: line.slice(0, colonIdx).trim(), text: line.slice(colonIdx + 1).trim() };
-      }
-      return { speaker: "character", text: line };
-    });
-
-const exampleLinesToText = (lines) =>
-  (lines || [])
-    .map((l) => (l.speaker === "user" ? `User: ${l.text}` : `${l.name || "Character"}: ${l.text}`))
-    .join("\n");
-
 export default function Create() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -263,7 +194,6 @@ export default function Create() {
   const startCharacterCreation = useAppStore((s) => s.startCharacterCreation);
   const updateCharacterCreation = useAppStore((s) => s.updateCharacterCreation);
   const completeCharacterCreation = useAppStore((s) => s.completeCharacterCreation);
-  const addCreationVideo = useAppStore((s) => s.addCreationVideo);
   const openConversationForCharacter = useAppStore((s) => s.openConversationForCharacter);
   const characterCreations = useAppStore((s) => s.characterCreations);
   const createdCharacters = useAppStore((s) => s.createdCharacters);
@@ -325,11 +255,6 @@ export default function Create() {
   const [isPublic, setIsPublic] = useState(true);
   const [characterIdea, setCharacterIdea] = useState("");
   const [texts, setTexts] = useState({ relation: "", scenario: "", firstMessage: "", example: "" });
-  const [editingPiece, setEditingPiece] = useState(null);
-  const [videoPrompts, setVideoPrompts] = useState(["", "", ""]);
-  const [videoGenerating, setVideoGenerating] = useState([false, false, false]);
-  const [playingVideoIndex, setPlayingVideoIndex] = useState(-1);
-  const videoRefs = useRef([]);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [leavePromptOpen, setLeavePromptOpen] = useState(false);
   const [manualLeaveIntent, setManualLeaveIntent] = useState("");
@@ -370,21 +295,13 @@ export default function Create() {
     setIsPublic(record.isPublic === undefined ? true : Boolean(record.isPublic));
     setPromptText(record.portraitPrompt || "");
     setOpenGroup("gender");
-    setVideoPrompts(
-      Array.from({ length: 3 }).map((_, idx) => {
-        const item = (record.videos || [])[idx];
-        return item?.prompt || (Array.isArray(record.videoDraftPrompts) ? record.videoDraftPrompts[idx] || "" : "");
-      }),
-    );
-    setVideoGenerating([false, false, false]);
-    setPlayingVideoIndex(-1);
   }, [record?.id]);
 
   const majorStep = useMemo(() => {
     if (!record) return 0;
     if (record.status === "gender" || record.status === "appearance" || record.status === "portrait") return 1;
     if (record.status === "description" || record.status === "text") return 2;
-    if (record.status === "video") return 3;
+    if (record.status === "video") return 2;
     if (record.status === "completed") return 2;
     return 1;
   }, [record?.status]);
@@ -483,15 +400,12 @@ export default function Create() {
       texts: majorStep >= 2 ? { ...texts } : record.texts,
       isPublic: Boolean(isPublic),
       portraitPrompt: promptText,
-      videoDraftPrompts: videoPrompts.slice(0, 3),
       status:
-        majorStep === 3
-          ? "video"
-          : majorStep === 2
-            ? record.status === "description" ? "description" : "text"
-            : gender || record.portraitUrl
-              ? "appearance"
-              : "gender",
+        majorStep === 2
+          ? "description"
+          : gender || record.portraitUrl
+            ? "appearance"
+            : "gender",
     };
     updateCharacterCreation(record.id, patch);
   };
@@ -574,7 +488,7 @@ export default function Create() {
           : fixedPortraitUrls[0];
     const url = next;
     persistAppearance("portrait");
-    updateCharacterCreation(record.id, { portraitUrl: url, portraitPrompt: promptText, avatarUrl: "", avatarCrop: null });
+    updateCharacterCreation(record.id, { portraitUrl: url, portraitPrompt: promptText });
   };
 
   const onToPortraitStep = () => {
@@ -608,10 +522,6 @@ export default function Create() {
       showToast("error", "请先生成形象");
       return;
     }
-    if (!record.avatarUrl) {
-      showToast("error", "请先裁剪并保存人物头像");
-      return;
-    }
     persistAppearance("description");
     updateCharacterCreation(record.id, { characterIdea, status: "description" });
   };
@@ -620,8 +530,10 @@ export default function Create() {
     if (!record) return;
     const idea = characterIdea.trim();
     const nextTexts = generateTexts({ name, country, personality }, idea);
+    setCharacterIdea(idea);
     setTexts(nextTexts);
-    updateCharacterCreation(record.id, { characterIdea: idea, texts: nextTexts, status: "text" });
+    updateCharacterCreation(record.id, { characterIdea: idea, texts: nextTexts, status: "description" });
+    showToast("success", record.texts?.relation ? "人物设定已重新生成" : "人物设定已生成");
   };
 
   const onFinishCharacter = () => {
@@ -631,68 +543,15 @@ export default function Create() {
     if (!res?.ok) {
       if (res?.reason === "diamonds") setPaywallOpen(true);
       if (res?.reason === "login") showToast("error", "请先登录");
-      if (res?.reason === "avatar") showToast("error", "请先裁剪并保存人物头像");
       return;
     }
     showToast("success", res?.charged ? "人物已创建（已扣 5 钻石）" : "人物已创建（首个免费）");
-  };
-
-  const setFirstMessagePiece = (pieceIndex, value) => {
-    setTexts((prev) => {
-      const pieces = splitPieces(prev.firstMessage);
-      if (!pieces[pieceIndex]) return prev;
-      pieces[pieceIndex] = { ...pieces[pieceIndex], text: value };
-      return { ...prev, firstMessage: joinPieces(pieces) };
-    });
-  };
-
-  const setExamplePiece = (lineIndex, pieceIndex, value) => {
-    setTexts((prev) => {
-      const lines = parseExampleLines(prev.example);
-      const line = lines[lineIndex];
-      if (!line) return prev;
-      if (line.speaker === "user") {
-        lines[lineIndex] = { ...line, text: value };
-      } else {
-        const pieces = splitPieces(line.text);
-        if (!pieces[pieceIndex]) return prev;
-        pieces[pieceIndex] = { ...pieces[pieceIndex], text: value };
-        lines[lineIndex] = { ...line, text: joinPieces(pieces) };
-      }
-      return { ...prev, example: exampleLinesToText(lines) };
-    });
-  };
-
-  const onBackToDescription = () => {
-    if (!record) return;
-    updateCharacterCreation(record.id, { characterIdea, texts, isPublic: Boolean(isPublic), status: "description" });
   };
 
   const onStartChat = () => {
     if (!record?.characterId) return;
     const convId = openConversationForCharacter(record.characterId);
     if (convId) navigate(`/chat/${convId}`);
-  };
-
-  const onToVideoStep = () => {
-    if (!record) return;
-    updateCharacterCreation(record.id, { status: "video" });
-  };
-
-  const onGenerateVideo = (prompt, slotIndex) => {
-    if (!record) return;
-    const ok = spendDiamonds(15);
-    if (!ok) {
-      setPaywallOpen(true);
-      return;
-    }
-    setVideoGenerating((prev) => prev.map((v, idx) => (idx === slotIndex ? true : v)));
-    window.setTimeout(() => {
-      const url = demoVideos[slotIndex] || "/videos/characters/hover.mp4";
-      addCreationVideo({ creationId: record.id, slotIndex, prompt, url });
-      setVideoGenerating((prev) => prev.map((v, idx) => (idx === slotIndex ? false : v)));
-      showToast("success", "视频已生成（mock）");
-    }, 850);
   };
 
   if (!draftId) {
@@ -707,7 +566,7 @@ export default function Create() {
               <div className="w-full max-w-3xl rounded-[32px] border border-white/10 bg-black/38 px-6 py-10 shadow-2xl backdrop-blur-md sm:px-10">
                 <div className="text-4xl font-semibold tracking-tight text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.45)] sm:text-6xl">创造人物</div>
                 <div className="mt-4 text-base leading-8 text-white/90">
-                  自定义创建你梦想中的人物，从外貌到性格、从开场对白到视频内容，全部由你亲手定义。
+                  自定义创建你梦想中的人物，从外貌、性格到开场对白，全部由你亲手定义。
                 </div>
 
                 <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
@@ -755,15 +614,7 @@ export default function Create() {
               <div className="min-w-0">
                 <div className="text-lg font-semibold text-zinc-900">检测到未完成的草稿</div>
                 <div className="mt-1 text-sm text-zinc-600">
-                  上次进行到「
-                  {pendingDraft.appearance?.gender === "Male"
-                    ? "男"
-                    : pendingDraft.appearance?.gender === "Female"
-                      ? "女"
-                      : "选择性别"}
-                  」
-                  {pendingDraft.appearance?.name ? ` · ${pendingDraft.appearance.name}` : ""}
-                  。你可以继续上次的草稿，或重新创建（将放弃当前草稿，从选择性别开始）。
+                  你可以继续上次的草稿，或重新创建（将放弃当前草稿，从选择性别开始）。
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -875,7 +726,7 @@ export default function Create() {
           <div>
             <div className="text-xl font-semibold text-zinc-900">创建人物</div>
             <div className="mt-1 text-sm text-zinc-500">
-              Step {majorStep}/3 · {majorStep === 1 ? "外貌" : majorStep === 2 ? "人物设定" : "视频"}
+              Step {majorStep}/2 · {majorStep === 1 ? "外貌" : "人物设定"}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -886,10 +737,6 @@ export default function Create() {
             <div className={cn("inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold", majorStep >= 2 ? "bg-zinc-900 text-white" : "border border-zinc-200 bg-white text-zinc-500")}>
               <Sparkles className="h-3.5 w-3.5" />
               人物设定
-            </div>
-            <div className={cn("inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold", majorStep >= 3 ? "bg-zinc-900 text-white" : "border border-zinc-200 bg-white text-zinc-500")}>
-              <Video className="h-3.5 w-3.5" />
-              视频
             </div>
           </div>
         </div>
@@ -1222,7 +1069,7 @@ export default function Create() {
         ) : null}
 
         {record.status === "portrait" ? (
-          <div className="mx-auto mt-6 grid max-w-[1380px] grid-cols-1 gap-5 lg:grid-cols-[minmax(280px,0.8fr)_360px_360px]">
+          <div className="mx-auto mt-6 grid max-w-5xl grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
             <div className="flex flex-col rounded-[26px] border border-zinc-200 bg-white p-5">
               <div className="text-sm font-semibold text-zinc-900">预览和修改提示词</div>
               <div className="mt-1 text-xs leading-5 text-zinc-500">这是根据你填选的内容生成的提示词，可自由修改后再生成图片。</div>
@@ -1286,311 +1133,103 @@ export default function Create() {
                   </div>
                 )}
               </div>
-            </div>
-
-            <div className="flex flex-col rounded-[26px] border border-zinc-200 bg-white p-5">
-              <AvatarCropper
-                src={record.portraitUrl}
-                initialCrop={record.avatarCrop}
-                onConfirmAndNext={({ avatarUrl, crop }) => {
-                  updateCharacterCreation(record.id, {
-                    appearance: buildAppearancePayload(),
-                    avatarUrl,
-                    avatarCrop: crop,
-                    characterIdea,
-                    status: "description",
-                  });
-                  showToast("success", "头像已保存");
-                }}
-                onError={() => showToast("error", "头像裁剪失败，请重试")}
-              />
-            </div>
-          </div>
-        ) : null}
-
-        {record.status === "description" ? (
-          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-            <div className="flex flex-col rounded-[26px] border border-zinc-200 bg-white p-5 sm:p-6">
-              <div className="text-lg font-semibold text-zinc-900">写下你们的关系与对话风格</div>
-              <div className="mt-2 text-sm leading-6 text-zinc-500">你可以写下你和 TA 的关系、TA 的“灵魂/核心气质”，以及希望 TA 如何与你对话（语气、边界、节奏）。此项选填，不填写也可以直接生成。</div>
-              <textarea
-                value={characterIdea}
-                onChange={(e) => setCharacterIdea(e.target.value)}
-                placeholder={`例如：
-关系：她是我长期合作的私人医生，也是我最信任的倾诉对象。
-灵魂/气质：外冷内热，专业克制，但对我会格外温柔且坚定。
-对话效果：希望她说话简洁、有安全感；在我焦虑时先安抚再给建议；偶尔带一点轻松的玩笑，但不越界。`}
-                maxLength={1000}
-                className="mt-5 min-h-[300px] w-full flex-1 resize-none rounded-3xl border border-zinc-200 bg-zinc-50/60 px-5 py-4 text-sm leading-7 text-zinc-900 outline-none transition focus:border-zinc-900 focus:bg-white"
-              />
-              <div className="mt-2 text-right text-xs text-zinc-400">{characterIdea.length}/1000</div>
-              <div className="mt-5 flex items-center gap-3">
+              <div className="mt-4">
                 <button
                   type="button"
-                  onClick={() => updateCharacterCreation(record.id, { characterIdea, status: "portrait" })}
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+                  onClick={onToDescriptionStep}
+                  disabled={!record.portraitUrl}
+                  className={cn(
+                    "inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold",
+                    record.portraitUrl ? "bg-emerald-600 text-white hover:bg-emerald-500" : "bg-zinc-200 text-zinc-500",
+                  )}
                 >
-                  <ChevronLeft className="h-4 w-4" />
-                  上一步
+                  下一步
+                  <ChevronRight className="h-4 w-4" />
                 </button>
-                <button
-                  type="button"
-                  onClick={onGenerateCharacterTexts}
-                  className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-5 text-sm font-semibold text-white transition hover:bg-zinc-800"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  生成人物设定
-                </button>
-              </div>
-            </div>
-
-            <div className="flex flex-col rounded-[26px] border border-zinc-200 bg-white p-4">
-              <div className="text-sm font-semibold text-zinc-900">人物预览</div>
-              <div className="mx-auto mt-3 aspect-[9/16] h-[46vh] max-h-[440px] w-full overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-100">
-                {record.portraitUrl ? (
-                  <img src={record.portraitUrl} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.src = recordFallbackUrl; }} />
-                ) : null}
-              </div>
-              <div className="mt-3 rounded-2xl border border-zinc-200 bg-white p-3">
-                <div className="text-sm font-semibold text-zinc-900">{record.appearance?.name || "未命名人物"}</div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {(record.appearance?.personality || []).slice(0, 3).map((p) => (
-                    <span key={p} className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700">{p}</span>
-                  ))}
-                </div>
               </div>
             </div>
           </div>
         ) : null}
 
-        {record.status === "text" ? (
-          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-            <div className="flex flex-col rounded-[26px] border border-zinc-200 bg-white p-4">
-              <div className="text-sm font-semibold text-zinc-900">人物设定（可直接保存或修改）</div>
-              <div className="mt-3 grid max-h-[62vh] grid-cols-1 gap-3 overflow-y-auto pr-1">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {[
-                    { key: "relation", label: "人物与用户关系" },
-                    { key: "scenario", label: "对话场景" },
-                  ].map((item) => (
-                    <div key={item.key}>
-                      <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{item.label}</div>
-                      <textarea
-                        value={texts[item.key] || ""}
-                        onChange={(e) => setTexts({ ...texts, [item.key]: e.target.value })}
-                        className="mt-1.5 min-h-[64px] w-full resize-none rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900"
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200 bg-zinc-50/60 p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">对话的第一句话</div>
-                    <div className="text-[11px] text-zinc-400">点击其中任意一小句可单独编辑，*斜体灰字*为旁白</div>
-                  </div>
-                  <div className="mt-2 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm leading-7 text-zinc-900">
-                    {splitPieces(texts.firstMessage).map((piece, idx) => {
-                      const key = `first:${idx}`;
-                      const editing = editingPiece === key;
-                      if (editing) {
-                        return (
-                          <input
-                            key={key}
-                            autoFocus
-                            value={piece.text}
-                            onChange={(e) => setFirstMessagePiece(idx, e.target.value)}
-                            onBlur={() => setEditingPiece(null)}
-                            onKeyDown={(e) => e.key === "Enter" && setEditingPiece(null)}
-                            className={cn(
-                              "mx-0.5 my-0.5 inline-flex rounded-md border border-zinc-900 bg-white px-1.5 py-0.5 text-sm outline-none",
-                              piece.type === "narration" ? "italic text-zinc-500" : "text-zinc-900",
-                            )}
-                            style={{ width: `${Math.max(6, piece.text.length + 2)}ch` }}
-                          />
-                        );
-                      }
-                      return (
-                        <span
-                          key={key}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => setEditingPiece(key)}
-                          className={cn(
-                            "mx-0.5 cursor-text rounded-md px-1 py-0.5 transition-colors hover:bg-zinc-100",
-                            piece.type === "narration" ? "italic text-zinc-500" : "text-zinc-900",
-                          )}
-                        >
-                          {piece.text}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200 bg-zinc-50/60 p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Message example</div>
-                    <div className="text-[11px] text-zinc-400">用户一句、人物一句；人物那段里每一小句可单独点改</div>
-                  </div>
-                  <div className="mt-2 flex flex-col gap-2">
-                    {parseExampleLines(texts.example).map((line, li) => {
-                      const isUser = line.speaker === "user";
-                      return (
-                        <div key={li} className={cn("flex flex-col", isUser ? "items-end" : "items-start")}>
-                          <div className="mb-0.5 text-[11px] font-semibold text-zinc-400">
-                            {isUser ? "用户" : line.name || record.appearance?.name || "人物"}
-                          </div>
-                          <div
-                            className={cn(
-                              "max-w-[85%] rounded-2xl border px-3 py-2 text-sm leading-7",
-                              isUser ? "border-sky-200 bg-sky-50 text-zinc-900" : "border-zinc-200 bg-white text-zinc-900",
-                            )}
-                          >
-                            {isUser ? (
-                              editingPiece === `ex:${li}:0` ? (
-                                <input
-                                  autoFocus
-                                  value={line.text}
-                                  onChange={(e) => setExamplePiece(li, 0, e.target.value)}
-                                  onBlur={() => setEditingPiece(null)}
-                                  onKeyDown={(e) => e.key === "Enter" && setEditingPiece(null)}
-                                  className="rounded-md border border-zinc-900 bg-white px-1.5 py-0.5 text-sm outline-none"
-                                  style={{ width: `${Math.max(6, line.text.length + 2)}ch` }}
-                                />
-                              ) : (
-                                <span
-                                  role="button"
-                                  tabIndex={0}
-                                  onClick={() => setEditingPiece(`ex:${li}:0`)}
-                                  className="cursor-text rounded-md px-1 py-0.5 hover:bg-white/70"
-                                >
-                                  {line.text}
-                                </span>
-                              )
-                            ) : (
-                              splitPieces(line.text).map((piece, pi) => {
-                                const key = `ex:${li}:${pi}`;
-                                const editing = editingPiece === key;
-                                if (editing) {
-                                  return (
-                                    <input
-                                      key={key}
-                                      autoFocus
-                                      value={piece.text}
-                                      onChange={(e) => setExamplePiece(li, pi, e.target.value)}
-                                      onBlur={() => setEditingPiece(null)}
-                                      onKeyDown={(e) => e.key === "Enter" && setEditingPiece(null)}
-                                      className={cn(
-                                        "mx-0.5 my-0.5 inline-flex rounded-md border border-zinc-900 bg-white px-1.5 py-0.5 text-sm outline-none",
-                                        piece.type === "narration" ? "italic text-zinc-500" : "text-zinc-900",
-                                      )}
-                                      style={{ width: `${Math.max(6, piece.text.length + 2)}ch` }}
-                                    />
-                                  );
-                                }
-                                return (
-                                  <span
-                                    key={key}
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={() => setEditingPiece(key)}
-                                    className={cn(
-                                      "mx-0.5 cursor-text rounded-md px-1 py-0.5 transition-colors hover:bg-zinc-100",
-                                      piece.type === "narration" ? "italic text-zinc-500" : "text-zinc-900",
-                                    )}
-                                  >
-                                    {piece.text}
-                                  </span>
-                                );
-                              })
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-3 flex items-center justify-between rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2.5">
-                <div className="flex items-center gap-3">
-                  <div className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-white">
-                    {isPublic ? <Globe2 className="h-5 w-5 text-emerald-600" /> : <Lock className="h-5 w-5 text-zinc-600" />}
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold text-zinc-900">是否公开人物</div>
-                    <div className="mt-0.5 text-xs text-zinc-500">{isPublic ? "公开后其他用户可在平台使用" : "仅你自己可见"}</div>
-                  </div>
-                </div>
-                <label className="inline-flex items-center">
-                  <span className="sr-only">{isPublic ? "公开" : "私密"}</span>
-                  <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} className="sr-only" />
-                  <span
-                    className={cn(
-                      "relative inline-flex h-8 w-[56px] items-center rounded-full border transition-colors",
-                      isPublic ? "border-emerald-600 bg-emerald-600" : "border-zinc-300 bg-zinc-200",
-                    )}
+        {record.status === "description" || record.status === "text" ? (
+          <div className="mx-auto mt-4 max-w-6xl rounded-[26px] border border-zinc-200 bg-white p-4 sm:p-5">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(300px,0.82fr)_minmax(0,1.45fr)]">
+              <div className="flex min-h-[300px] flex-col">
+                <textarea
+                  value={characterIdea}
+                  onChange={(e) => setCharacterIdea(e.target.value)}
+                  placeholder={`你希望这个人是什么样的？可以从下面几个方面描述：
+人物关系：TA 是你的恋人、朋友、同事、医生，还是只属于你的特别陪伴？
+对话场景：你们通常在哪里、什么情况下聊天？整体氛围是轻松、暧昧、治愈还是克制？
+第一句话：希望 TA 第一次见到你时怎么开口？语气温柔、主动、幽默，还是略带距离感？
+消息案例：希望 TA 平时如何回应你？回复长短、表达方式、边界和互动节奏是什么样的？`}
+                  maxLength={500}
+                  aria-label="你希望这个人是什么样的"
+                  className="min-h-[230px] w-full flex-1 resize-none rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm leading-6 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900"
+                />
+                <div className="mt-2 flex items-center justify-end text-xs tabular-nums text-zinc-400">{characterIdea.length}/500</div>
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={onGenerateCharacterTexts}
+                    className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-5 text-sm font-semibold text-white transition hover:bg-zinc-800"
                   >
-                    <span
-                      className={cn(
-                        "absolute left-1 top-1 h-6 w-6 rounded-full bg-white shadow transition-transform",
-                        isPublic ? "translate-x-[24px]" : "translate-x-0",
-                      )}
-                    />
-                  </span>
-                </label>
+                    <RefreshCw className="h-4 w-4" />
+                    {texts.relation ? "重新生成" : "生成"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateCharacterCreation(record.id, { characterIdea, texts, status: "portrait" })}
+                    className="inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    上一步
+                  </button>
+                </div>
               </div>
 
-              <div className="mt-3 flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={onBackToDescription}
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  上一步
-                </button>
-                <button
-                  type="button"
-                  onClick={onFinishCharacter}
-                  className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-5 text-sm font-semibold text-white hover:bg-zinc-800"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  保存并生成人物
-                </button>
+              <div className="grid min-h-[300px] grid-cols-1 gap-3 sm:grid-cols-2">
+                {[
+                  { key: "relation", label: "人物与用户关系" },
+                  { key: "scenario", label: "对话场景" },
+                  { key: "firstMessage", label: "对话的第一句话" },
+                  { key: "example", label: "消息案例" },
+                ].map((item) => (
+                  <div key={item.key} className="flex min-h-[142px] flex-col rounded-2xl border border-zinc-200 bg-zinc-50/70 p-3.5">
+                    <div className="shrink-0 text-xs font-semibold text-zinc-500">{item.label}</div>
+                    {texts.relation ? (
+                      <div className="mt-2 min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap pr-1 text-sm leading-6 text-zinc-800">{texts[item.key]}</div>
+                    ) : null}
+                  </div>
+                ))}
               </div>
             </div>
 
-            <div className="flex flex-col rounded-[26px] border border-zinc-200 bg-white p-4">
-              <div className="text-sm font-semibold text-zinc-900">人物预览</div>
-              <div className="mx-auto mt-3 aspect-[9/16] h-[46vh] max-h-[440px] w-full overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-100">
-                {record.portraitUrl ? (
-                  <img
-                    src={record.portraitUrl}
-                    alt=""
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.src = recordFallbackUrl;
-                    }}
-                  />
-                ) : null}
-              </div>
-              <div className="mt-3 rounded-2xl border border-zinc-200 bg-white p-3">
-                <div className="text-sm font-semibold text-zinc-900">{record.appearance?.name || "未命名人物"}</div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {(record.appearance?.personality || []).slice(0, 3).map((p) => (
-                    <span key={p} className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-700">
-                      {p}
-                    </span>
-                  ))}
-                </div>
-              </div>
+            <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-zinc-100 pt-4">
+              <label className="flex h-10 items-center gap-2.5 rounded-2xl border border-zinc-200 bg-zinc-50 px-3.5">
+                <span className="text-sm font-semibold text-zinc-700">公开人物</span>
+                <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} className="sr-only" />
+                <span className={cn("relative inline-flex h-6 w-11 items-center rounded-full transition-colors", isPublic ? "bg-emerald-600" : "bg-zinc-300")}>
+                  <span className={cn("absolute left-1 h-4 w-4 rounded-full bg-white shadow transition-transform", isPublic ? "translate-x-5" : "translate-x-0")} />
+                </span>
+              </label>
+              <button
+                type="button"
+                onClick={onFinishCharacter}
+                disabled={!texts.relation}
+                className={cn(
+                  "inline-flex h-10 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold",
+                  texts.relation ? "bg-zinc-900 text-white hover:bg-zinc-800" : "bg-zinc-200 text-zinc-500",
+                )}
+              >
+                <Sparkles className="h-4 w-4" />
+                保存并生成人物
+              </button>
             </div>
           </div>
         ) : null}
 
-        {record.status === "completed" ? (
+        {record.status === "completed" || record.status === "video" ? (
           <div className="mx-auto mt-6 max-w-4xl rounded-[26px] border border-zinc-200 bg-white p-5 sm:p-6">
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-[220px_minmax(0,1fr)]">
               <div className="mx-auto aspect-[9/16] w-full max-w-[220px] overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-100">
@@ -1645,22 +1284,14 @@ export default function Create() {
                   </div>
                 </div>
 
-                <div className="mt-auto flex flex-wrap items-center gap-3 pt-6">
+                <div className="mt-auto pt-6">
                   <button
                     type="button"
                     onClick={onStartChat}
-                    className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-5 text-sm font-semibold text-white hover:bg-zinc-800"
+                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-5 text-sm font-semibold text-white hover:bg-zinc-800"
                   >
                     <Sparkles className="h-4 w-4" />
                     开始对话
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onToVideoStep}
-                    className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-5 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-                  >
-                    <Video className="h-4 w-4" />
-                    生成视频
                   </button>
                 </div>
               </div>
@@ -1668,141 +1299,6 @@ export default function Create() {
           </div>
         ) : null}
 
-        {record.status === "video" ? (
-          <div className="mt-4 rounded-[26px] border border-zinc-200 bg-white p-4">
-            <div>
-              <div className="text-sm font-semibold text-zinc-900">生成视频内容（最多 3 个）</div>
-              <div className="mt-1 text-xs text-zinc-500">每个模块输入提示词，生成完成后点击视频即可播放。</div>
-            </div>
-
-            <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, idx) => {
-                const existing = (record.videos || [])[idx];
-                const prompt = videoPrompts[idx] || "";
-                const generating = Boolean(videoGenerating[idx]);
-                const isPlaying = playingVideoIndex === idx;
-                return (
-                  <div key={idx} className="rounded-[22px] border border-zinc-200 bg-white p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">视频 {idx + 1}</div>
-                      <div className="text-xs font-semibold text-zinc-500">{existing?.url ? "已生成" : generating ? "生成中" : "未生成"}</div>
-                    </div>
-
-                    {!existing?.url && !generating ? (
-                      <div className="mt-3">
-                        <textarea
-                          value={prompt}
-                          onChange={(e) => {
-                            const next = videoPrompts.slice();
-                            next[idx] = e.target.value;
-                            setVideoPrompts(next);
-                          }}
-                          placeholder="输入提示词（例如：在咖啡馆里微笑打招呼）"
-                          className="h-[32vh] max-h-[300px] min-h-[120px] w-full resize-none rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900"
-                        />
-                        <div className="mt-3 flex items-center justify-end">
-                          <button
-                            type="button"
-                            onClick={() => onGenerateVideo(prompt, idx)}
-                            disabled={!prompt.trim()}
-                            className={cn(
-                              "inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold",
-                              !prompt.trim() ? "bg-zinc-200 text-zinc-500" : "bg-zinc-900 text-white hover:bg-zinc-800",
-                            )}
-                          >
-                            <DiamondIcon className="h-4 w-4 text-sky-200" />
-                            <span>生成（15）</span>
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {generating ? (
-                      <div className="mt-3 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50">
-                        <div className="mx-auto flex aspect-[9/16] h-[40vh] max-h-[360px] w-full flex-col items-center justify-center gap-2">
-                          <div className="h-9 w-9 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-900" />
-                          <div className="text-sm font-semibold text-zinc-900">视频生成中</div>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {existing?.url ? (
-                      <div className="mt-3">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const el = videoRefs.current[idx];
-                            if (!el) return;
-                            if (playingVideoIndex !== idx) {
-                              setPlayingVideoIndex(idx);
-                              el.play?.();
-                              return;
-                            }
-                            if (el.paused) el.play?.();
-                            else el.pause?.();
-                          }}
-                          className="group relative mx-auto block h-[40vh] max-h-[360px] overflow-hidden rounded-2xl border border-zinc-200 bg-black"
-                        >
-                          <video
-                            ref={(node) => {
-                              videoRefs.current[idx] = node;
-                            }}
-                            src={existing.url}
-                            className="aspect-[9/16] h-full object-cover"
-                            muted
-                            playsInline
-                            preload="metadata"
-                            onPlay={() => setPlayingVideoIndex(idx)}
-                            onPause={() => setPlayingVideoIndex((cur) => (cur === idx ? -1 : cur))}
-                          />
-                          <div className={cn("absolute inset-0 flex items-center justify-center bg-black/25 transition", isPlaying ? "opacity-0" : "opacity-100 group-hover:bg-black/35")}>
-                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-zinc-900 shadow">
-                              <span className="ml-0.5 text-base leading-none">▶</span>
-                            </div>
-                          </div>
-                        </button>
-
-                        <div className="mt-3">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const ok = spendDiamonds(15);
-                              if (!ok) {
-                                setPaywallOpen(true);
-                                return;
-                              }
-                              const nextVideos = Array.isArray(record.videos) ? record.videos.slice() : [];
-                              nextVideos[idx] = null;
-                              updateCharacterCreation(record.id, { videos: nextVideos });
-                              setPlayingVideoIndex((cur) => (cur === idx ? -1 : cur));
-                              const el = videoRefs.current[idx];
-                              if (el) el.pause?.();
-                            }}
-                            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-                          >
-                            <DiamondIcon className="h-4 w-4 text-sky-500" />
-                            <span>重新生成（15）</span>
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-4 flex items-center justify-end border-t border-zinc-100 pt-4">
-              <button
-                type="button"
-                onClick={() => setSearchParams({})}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-6 text-sm font-semibold text-white hover:bg-zinc-800"
-              >
-                <Check className="h-4 w-4" />
-                完成，返回创建主页
-              </button>
-            </div>
-          </div>
-        ) : null}
       </div>
 
       {toast ? (

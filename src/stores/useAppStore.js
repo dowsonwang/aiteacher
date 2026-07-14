@@ -390,14 +390,10 @@ export const useAppStore = create(
             personality: [],
           },
           portraitUrl: "",
-          avatarUrl: "",
-          avatarCrop: null,
           characterIdea: "",
           texts: { relation: "", scenario: "", firstMessage: "", example: "" },
           isPublic: false,
           characterId: "",
-          videos: [],
-          videoDraftPrompts: ["", "", ""],
         };
         set((s) => ({
           characterCreations: [record, ...(Array.isArray(s.characterCreations) ? s.characterCreations : [])],
@@ -423,7 +419,6 @@ export const useAppStore = create(
         const list = Array.isArray(state.characterCreations) ? state.characterCreations : [];
         const record = list.find((r) => r.id === creationId);
         if (!record) return { ok: false, reason: "invalid" };
-        if (!record.avatarUrl) return { ok: false, reason: "avatar" };
 
         const myCreated = (Array.isArray(state.createdCharacters) ? state.createdCharacters : []).filter((c) => c?.ownerKey === accountKey);
         const needPay = myCreated.length >= 1;
@@ -445,7 +440,7 @@ export const useAppStore = create(
           age: 25,
           bio,
           starter,
-          avatarUrl: record.avatarUrl || record.portraitUrl,
+          avatarUrl: record.portraitUrl,
           heroUrl: record.portraitUrl,
           tags: personality.slice(0, 3),
           stats: { heat: 0, online: true },
@@ -465,24 +460,6 @@ export const useAppStore = create(
 
         return { ok: true, characterId, charged: needPay, cost: needPay ? 5 : 0 };
       },
-
-      addCreationVideo: ({ creationId, slotIndex = -1, prompt = "", url = "" } = {}) =>
-        set((state) => {
-          const list = Array.isArray(state.characterCreations) ? state.characterCreations : [];
-          const next = list.map((r) => {
-            if (r.id !== creationId) return r;
-            const videos = Array.isArray(r.videos) ? r.videos : [];
-            const item = { id: `cv_${generateId()}`, prompt: `${prompt || ""}`.trim(), url: `${url || ""}`, createdAt: Date.now() };
-            const nextVideos =
-              slotIndex >= 0 && slotIndex < 3
-                ? Array.from({ length: 3 })
-                    .map((_, idx) => (idx === slotIndex ? item : videos[idx] || null))
-                    .filter(Boolean)
-                : [...videos, item].slice(0, 3);
-            return { ...r, videos: nextVideos, updatedAt: Date.now() };
-          });
-          return { characterCreations: next };
-        }),
 
       deleteCharacterCreation: (creationId) =>
         set((state) => {
