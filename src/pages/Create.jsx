@@ -201,6 +201,7 @@ export default function Create() {
   const getAllCharacters = useAppStore((s) => s.getAllCharacters);
 
   const openAuth = useUIStore((s) => s.openAuth);
+  const openDiamondUpsell = useUIStore((s) => s.openDiamondUpsell);
 
   const draftId = searchParams.get("draft") || "";
   const record = useMemo(
@@ -255,7 +256,6 @@ export default function Create() {
   const [isPublic, setIsPublic] = useState(true);
   const [characterIdea, setCharacterIdea] = useState("");
   const [texts, setTexts] = useState({ relation: "", scenario: "", firstMessage: "", example: "" });
-  const [paywallOpen, setPaywallOpen] = useState(false);
   const [leavePromptOpen, setLeavePromptOpen] = useState(false);
   const [manualLeaveIntent, setManualLeaveIntent] = useState("");
   const skipAutoResumeRef = useRef(false);
@@ -475,7 +475,12 @@ export default function Create() {
     if (isRegenerate) {
       const ok = spendDiamonds(5);
       if (!ok) {
-        showToast("error", "钻石不足，无法重新生成");
+        openDiamondUpsell({
+          title: "Not enough diamonds",
+          description: "Regenerate the portrait by subscribing or buying a diamond pack in this modal.",
+          cost: 5,
+          source: "create-portrait-regenerate",
+        });
         return;
       }
     }
@@ -541,7 +546,14 @@ export default function Create() {
     updateCharacterCreation(record.id, { texts, isPublic: Boolean(isPublic) });
     const res = completeCharacterCreation({ creationId: record.id, isPublic: Boolean(isPublic) });
     if (!res?.ok) {
-      if (res?.reason === "diamonds") setPaywallOpen(true);
+      if (res?.reason === "diamonds") {
+        openDiamondUpsell({
+          title: "Not enough diamonds",
+          description: "Finish creating this character by subscribing or buying a diamond pack in this modal.",
+          cost: 5,
+          source: "create-character-finish",
+        });
+      }
       if (res?.reason === "login") showToast("error", "请先登录");
       return;
     }
@@ -1306,32 +1318,6 @@ export default function Create() {
           {toast.message}
         </div>
       ) : null}
-
-      <Modal open={paywallOpen} onClose={() => setPaywallOpen(false)} title="钻石不足">
-        <div className="text-sm leading-7 text-zinc-700">当前钻石不足，无法继续生成。请前往订阅或购买钻石。</div>
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              setPaywallOpen(false);
-              navigate("/subscribe");
-            }}
-            className="inline-flex items-center justify-center rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
-          >
-            去订阅
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setPaywallOpen(false);
-              navigate("/subscribe");
-            }}
-            className="inline-flex items-center justify-center rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-          >
-            购买钻石
-          </button>
-        </div>
-      </Modal>
 
       <Modal open={leavePromptOpen} onClose={closeLeavePrompt} title="是否保存当前生成的人物？">
         <div className="text-sm leading-7 text-zinc-700">保存后不会展示草稿记录，但下次进入创建页时可选择继续该草稿或重新创建；不保存则放弃当前内容。</div>

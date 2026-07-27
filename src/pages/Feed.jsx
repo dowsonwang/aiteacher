@@ -30,6 +30,7 @@ export default function Feed() {
   const getAllCharacters = useAppStore((s) => s.getAllCharacters);
   const openConversationForCharacter = useAppStore((s) => s.openConversationForCharacter);
   const openAuth = useUIStore((s) => s.openAuth);
+  const openDiamondUpsell = useUIStore((s) => s.openDiamondUpsell);
   const openShare = useUIStore((s) => s.openShare);
   const closeShare = useUIStore((s) => s.closeShare);
   const unlockedFeedVideos = useAppStore((s) => s.unlockedFeedVideos);
@@ -481,7 +482,16 @@ export default function Feed() {
                         e.stopPropagation();
                         const r = unlockFeedVideo({ feedId: active.id, cost: active.unlockCost || 5 });
                         if (!r.ok) {
-                          showToast("error", "Not enough 💎.");
+                          if (r.reason === "diamonds") {
+                            openDiamondUpsell({
+                              title: "Not enough diamonds",
+                              description: "Unlock this Discover video by subscribing or buying a diamond pack in this modal.",
+                              cost: active.unlockCost || 5,
+                              source: "discover-main-video",
+                            });
+                          } else {
+                            showToast("error", "Unable to unlock this video.");
+                          }
                           return;
                         }
                         showToast("success", "Unlocked.");
@@ -520,7 +530,16 @@ export default function Feed() {
                           if (!unlocked && !clip.free) {
                             const r = unlockFeedVideo({ feedId: clip.id, cost: 5 });
                             if (!r.ok) {
-                              showToast("error", "Not enough 💎.");
+                              if (r.reason === "diamonds") {
+                                openDiamondUpsell({
+                                  title: "Not enough diamonds",
+                                  description: "Unlock this Discover clip by subscribing or buying a diamond pack in this modal.",
+                                  cost: 5,
+                                  source: "discover-clip",
+                                });
+                              } else {
+                                showToast("error", "Unable to unlock this clip.");
+                              }
                               return;
                             }
                             showToast("success", r.alreadyUnlocked ? "Unlocked." : "Unlocked (-5 💎).");

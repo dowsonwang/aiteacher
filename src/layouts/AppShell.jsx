@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import AuthModal from "../components/AuthModal.jsx";
+import DiamondUpsellModal from "../components/DiamondUpsellModal.jsx";
 import LanguageModal from "../components/LanguageModal.jsx";
 import ShareModal from "../components/ShareModal.jsx";
 import Sidebar from "../components/Sidebar.jsx";
@@ -37,6 +38,7 @@ export default function AppShell() {
         </div>
       </div>
       <AuthModal />
+      <DiamondUpsellModal />
       <LanguageModal />
       <ShareModal />
     </div>

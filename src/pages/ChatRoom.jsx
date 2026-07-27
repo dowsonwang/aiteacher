@@ -79,6 +79,7 @@ export default function ChatRoom() {
   const language = useAppStore((s) => s.language);
   const session = useAppStore((s) => s.session);
   const openAuth = useUIStore((s) => s.openAuth);
+  const openDiamondUpsell = useUIStore((s) => s.openDiamondUpsell);
   const openShare = useUIStore((s) => s.openShare);
   const getAllCharacters = useAppStore((s) => s.getAllCharacters);
   const conversations = useAppStore((s) => s.conversations);
@@ -167,7 +168,19 @@ export default function ChatRoom() {
     const cost = kind === "video" ? requestVideoCost : requestImageCost;
     const result = consumeMediaRequest({ freeLimit: 3, cost });
     if (!result.ok) {
-      showToast("error", "Not enough 💎.");
+      if (result.reason === "diamonds") {
+        openDiamondUpsell({
+          title: "Not enough diamonds",
+          description:
+            kind === "video"
+              ? "Request this chat video by subscribing or buying a diamond pack in this modal."
+              : "Request this chat image by subscribing or buying a diamond pack in this modal.",
+          cost,
+          source: kind === "video" ? "chat-video-request" : "chat-image-request",
+        });
+      } else {
+        showToast("error", "Unable to send this request.");
+      }
       return;
     }
 

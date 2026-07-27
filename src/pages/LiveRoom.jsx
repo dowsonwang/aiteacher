@@ -69,6 +69,7 @@ export default function LiveRoom() {
   const diamonds = useAppStore((s) => s.diamonds);
   const spendDiamonds = useAppStore((s) => s.spendDiamonds);
   const openAuth = useUIStore((s) => s.openAuth);
+  const openDiamondUpsell = useUIStore((s) => s.openDiamondUpsell);
 
   const host = useMemo(() => liveHosts.find((x) => x.id === id) || liveHosts[0], [id]);
   const isSubscribed = subscription.status === "active";
@@ -149,7 +150,7 @@ export default function LiveRoom() {
     const cost = gift.free ? 0 : 5;
     const ok = cost ? spendDiamonds(cost) : true;
     if (!ok) {
-      showToast("error", "Not enough 💎.");
+      openDiamondUpsell({ requiredAmount: cost, source: "Paid Live Gift" });
       return;
     }
 

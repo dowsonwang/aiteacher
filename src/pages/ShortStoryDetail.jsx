@@ -14,6 +14,7 @@ import Modal from "../components/Modal.jsx";
 import { shortDramas, shortStoryBranches } from "../data/mock.js";
 import { cn } from "../lib/utils.js";
 import { useAppStore } from "../stores/useAppStore.js";
+import { useUIStore } from "../stores/useUIStore.js";
 
 const generationCost = 2700;
 const generationDurationSeconds = 10;
@@ -66,6 +67,7 @@ export default function ShortStoryDetail() {
   const accountKey = useAppStore((state) => state.session?.accountKey);
   const continuationJobs = useAppStore((state) => state.shortContinuationJobs);
   const createShortContinuation = useAppStore((state) => state.createShortContinuation);
+  const openDiamondUpsell = useUIStore((state) => state.openDiamondUpsell);
   const favoriteShorts = useAppStore((state) => state.favoriteShorts);
   const likedShorts = useAppStore((state) => state.likedShorts);
   const toggleFavoriteShort = useAppStore((state) => state.toggleFavoriteShort);
@@ -435,7 +437,19 @@ export default function ShortStoryDetail() {
       kind: createMode,
     });
     if (!result.ok) {
-      setToast(result.reason === "diamonds" ? "Not enough diamonds to generate." : "Add a prompt first.");
+      if (result.reason === "diamonds") {
+        openDiamondUpsell({
+          title: "Not enough diamonds",
+          description:
+            createMode === "rewrite"
+              ? "Rewrite this short drama branch by subscribing or buying a diamond pack in this modal."
+              : "Continue this short drama by subscribing or buying a diamond pack in this modal.",
+          cost: generationCost,
+          source: `shorts-${createMode}`,
+        });
+      } else {
+        setToast("Add a prompt first.");
+      }
       return;
     }
     const job = result.job;

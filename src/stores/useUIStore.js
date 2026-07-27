@@ -8,6 +8,8 @@ export const useUIStore = create((set) => ({
   shareOpen: false,
   shareUrl: "",
   shareTitle: "",
+  diamondUpsellOpen: false,
+  diamondUpsellContext: null,
   sidebarCollapsed: localStorage.getItem("sidebarCollapsed") === "1",
 
   openAuth: ({ mode = "login", postAuthPath = null } = {}) =>
@@ -24,6 +26,10 @@ export const useUIStore = create((set) => ({
   openShare: ({ url = "", title = "" } = {}) => set({ shareOpen: true, shareUrl: url, shareTitle: title }),
 
   closeShare: () => set({ shareOpen: false }),
+
+  openDiamondUpsell: (diamondUpsellContext = null) => set({ diamondUpsellOpen: true, diamondUpsellContext }),
+
+  closeDiamondUpsell: () => set({ diamondUpsellOpen: false, diamondUpsellContext: null }),
 
   toggleSidebar: () =>
     set((s) => {

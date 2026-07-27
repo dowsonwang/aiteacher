@@ -3,13 +3,10 @@ import Modal from "../components/Modal.jsx";
 import DiamondIcon from "../components/DiamondIcon.jsx";
 import FaqAccordion from "../components/FaqAccordion.jsx";
 import HomeFooter from "../components/HomeFooter.jsx";
+import { diamondPacks, formatUsd, planRank, subscriptionPlans, subscriptionRules } from "../lib/diamondCommerce.js";
 import { cn } from "../lib/utils.js";
 import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
-
-const planRank = (id) => (id === "year" ? 3 : id === "quarter" ? 2 : 1);
-
-const fmt = (amount) => `$${Number(amount).toFixed(2)}`;
 
 export default function Subscribe() {
   const session = useAppStore((s) => s.session);
@@ -19,58 +16,8 @@ export default function Subscribe() {
   const subscribeToPlan = useAppStore((s) => s.subscribeToPlan);
   const openAuth = useUIStore((s) => s.openAuth);
 
-  const plans = useMemo(() => {
-    return [
-      {
-        type: "plan",
-        id: "month",
-        name: "Monthly",
-        original: 9.99,
-        discounted: 9.99,
-        discountLabel: null,
-        period: "/month",
-        months: 1,
-        monthlyCredits: 8500,
-        totalCredits: 8500,
-        highlight: false,
-      },
-      {
-        type: "plan",
-        id: "quarter",
-        name: "Quarterly",
-        original: 29.99,
-        discounted: 26.99,
-        discountLabel: "10% OFF",
-        period: "/quarter",
-        months: 3,
-        monthlyCredits: 8500,
-        totalCredits: 25500,
-        highlight: false,
-      },
-      {
-        type: "plan",
-        id: "year",
-        name: "Yearly",
-        original: 119.99,
-        discounted: 95.99,
-        discountLabel: "20% OFF",
-        period: "/year",
-        months: 12,
-        monthlyCredits: 8500,
-        totalCredits: 102000,
-        highlight: true,
-      },
-    ];
-  }, []);
-  const diamondPacks = useMemo(
-    () => [
-      { type: "pack", id: "pack-s", name: "Small Pack", price: 6.99, diamonds: 5450 },
-      { type: "pack", id: "pack-m", name: "Standard Pack", price: 16.99, diamonds: 13350 },
-      { type: "pack", id: "pack-l", name: "Large Pack", price: 36.99, diamonds: 29000 },
-      { type: "pack", id: "pack-xl", name: "Ultra Pack", price: 69.99, diamonds: 54900 },
-    ],
-    [],
-  );
+  const plans = useMemo(() => subscriptionPlans, []);
+  const packs = useMemo(() => diamondPacks, []);
 
   const faqItems = useMemo(
     () => [
@@ -180,12 +127,7 @@ export default function Subscribe() {
     return planRank(plan.id) < currentRank;
   };
 
-  const rules = [
-    "Credits are issued monthly according to the selected plan.",
-    "Quarterly and yearly credits are issued monthly, not all at once.",
-    "Monthly subscription credits expire at the end of each billing month.",
-    "You can upgrade to a higher plan; downgrades are not supported.",
-  ];
+  const rules = useMemo(() => subscriptionRules, []);
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8 pb-4">
@@ -228,14 +170,14 @@ export default function Subscribe() {
               <div>
                 <div className="text-sm font-semibold text-zinc-900">{p.name}</div>
                 <div className="mt-3 flex items-end gap-2">
-                  <div className="text-3xl font-semibold text-zinc-900">{fmt(p.discounted)}</div>
+                  <div className="text-3xl font-semibold text-zinc-900">{formatUsd(p.discounted)}</div>
                   <div className="pb-1 text-sm text-zinc-500">{p.period}</div>
                 </div>
                 <div className="mt-2 flex min-h-6 items-center gap-2">
                   {p.discountLabel ? (
                     <>
                       <span className="rounded-full bg-emerald-600/10 px-3 py-1 text-xs font-semibold text-emerald-700">{p.discountLabel}</span>
-                      <span className="text-xs text-zinc-400 line-through">{fmt(p.original)}</span>
+                      <span className="text-xs text-zinc-400 line-through">{formatUsd(p.original)}</span>
                     </>
                   ) : (
                     <span className="text-xs text-zinc-500">Billed monthly</span>
@@ -287,11 +229,11 @@ export default function Subscribe() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {diamondPacks.map((pack) => (
+          {packs.map((pack) => (
             <div key={pack.id} className="flex min-h-[220px] flex-col rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm">
               <div className="text-sm font-semibold text-zinc-900">{pack.name}</div>
               <div className="mt-3 flex items-end gap-2">
-                <div className="text-3xl font-semibold text-zinc-900">{fmt(pack.price)}</div>
+                <div className="text-3xl font-semibold text-zinc-900">{formatUsd(pack.price)}</div>
               </div>
               <div className="mt-5 inline-flex items-center gap-1 text-base font-semibold text-zinc-900">
                 <DiamondIcon className="h-4 w-4" />
@@ -341,7 +283,7 @@ export default function Subscribe() {
             <div className="mt-1 text-sm text-zinc-600">
               Amount:{" "}
               <span className="font-semibold text-zinc-900">
-                {confirmItem ? fmt(confirmItem.type === "pack" ? confirmItem.price : confirmItem.discounted) : "-"}
+                {confirmItem ? formatUsd(confirmItem.type === "pack" ? confirmItem.price : confirmItem.discounted) : "-"}
               </span>
             </div>
             <div className="mt-2 inline-flex items-center gap-1 text-sm text-zinc-600">
