@@ -23,13 +23,12 @@ export default function BrowseHome() {
     `https://coreva-normal.trae.ai/api/ide/v1/text_to_image?prompt=${encodeURIComponent(prompt)}&image_size=${imageSize}`;
   const getShortsCoverSrc = (i) => {
     const sources = [
-      "/images/home/shorts-cover.png",
-      "/images/home/shorts-cover1.png",
-      "/images/home/shorts-cover2.png",
-      "/images/home/shorts-cover3.png",
-      "/images/home/shorts-cover4.png",
+      "/images/create/fixed-portrait.png",
+      "/images/create/results/standard/hero-1.png",
+      "/images/create/results/vip/candidate-1-hero.png",
+      "/images/create/fixed-portrait-2.png",
     ];
-    const src = sources[i] || sources[0];
+    const src = sources[i % sources.length];
     return `${src}?v=${assetVersion}`;
   };
   const onStartChat = (characterId) => {

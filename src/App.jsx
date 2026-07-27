@@ -3,7 +3,8 @@ import AppShell from "./layouts/AppShell.jsx";
 import BrowseHome from "./pages/BrowseHome.jsx";
 import Feed from "./pages/Feed.jsx";
 import Shorts from "./pages/Shorts.jsx";
-import ShortDetail from "./pages/ShortDetail.jsx";
+import ShortDetail from "./pages/ShortStoryDetail.jsx";
+import ShortStoryOverview from "./pages/ShortStoryOverview.jsx";
 import Favorites from "./pages/Favorites.jsx";
 import Create from "./pages/Create.jsx";
 import CreateRecordDetail from "./pages/CreateRecordDetail.jsx";
@@ -29,6 +30,7 @@ const router = createBrowserRouter([
       { path: "browse", element: <BrowseHome /> },
       { path: "feed", element: <Feed /> },
       { path: "shorts", element: <Shorts /> },
+      { path: "shorts/:id/about", element: <ShortStoryOverview /> },
       { path: "shorts/:id", element: <ShortDetail /> },
       { path: "create", element: <Create /> },
       { path: "create/record/:id", element: <CreateRecordDetail /> },

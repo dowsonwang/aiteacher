@@ -20,6 +20,9 @@ import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
 import { shortDramas } from "../data/mock.js";
 
+const requestImageCost = 40;
+const requestVideoCost = 750;
+
 const buildAssistantReply = ({ characterName, userText }) => {
   const text = userText.trim();
   if (!text) {
@@ -129,6 +132,7 @@ export default function ChatRoom() {
   const [mediaItem, setMediaItem] = useState(null);
   const messagesRef = useRef(null);
   const requestButtonsRef = useRef(null);
+  const hasOpenedTourRef = useRef(false);
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
 
@@ -160,7 +164,8 @@ export default function ChatRoom() {
   const requestMedia = async (kind) => {
     if (!conversation) return;
     const beforeFreeLeft = quota.freeLeft;
-    const result = consumeMediaRequest({ freeLimit: 3, cost: 5 });
+    const cost = kind === "video" ? requestVideoCost : requestImageCost;
+    const result = consumeMediaRequest({ freeLimit: 3, cost });
     if (!result.ok) {
       showToast("error", "Not enough 💎.");
       return;
@@ -222,6 +227,10 @@ export default function ChatRoom() {
 
   useEffect(() => {
     if (!conversation || !character || !session.isLoggedIn) return;
+    if (hasOpenedTourRef.current) return;
+    const canShow = typeof window !== "undefined" && window.matchMedia?.("(min-width: 1024px)")?.matches;
+    if (!canShow) return;
+    hasOpenedTourRef.current = true;
     const raf = window.requestAnimationFrame(() => setTourOpen(true));
     return () => window.cancelAnimationFrame(raf);
   }, [character, conversation, session.isLoggedIn]);
@@ -507,7 +516,8 @@ export default function ChatRoom() {
               {t(language, "chat_request_image")}
               {quota.freeLeft <= 0 ? (
                 <span className="inline-flex items-center gap-1 text-zinc-700">
-                  <Gem className="h-3.5 w-3.5" />5
+                  <Gem className="h-3.5 w-3.5" />
+                  {requestImageCost}
                 </span>
               ) : null}
             </button>
@@ -520,7 +530,8 @@ export default function ChatRoom() {
               {t(language, "chat_request_video")}
               {quota.freeLeft <= 0 ? (
                 <span className="inline-flex items-center gap-1 text-zinc-700">
-                  <Gem className="h-3.5 w-3.5" />5
+                  <Gem className="h-3.5 w-3.5" />
+                  {requestVideoCost}
                 </span>
               ) : null}
             </button>

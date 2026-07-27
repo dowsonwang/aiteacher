@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useAppStore } from "../stores/useAppStore.js";
 import { cn } from "../lib/utils.js";
-import { CreditCard, Gem, Receipt, X } from "lucide-react";
+import { CreditCard, Gem, X } from "lucide-react";
 
 export default function Account() {
   const session = useAppStore((s) => s.session);
@@ -50,16 +50,6 @@ export default function Account() {
       return "-";
     }
   }, [subscription.expiresAt]);
-
-  const diamondLedger = useMemo(() => {
-    const now = Date.now();
-    return [
-      { id: "t1", type: "spend", title: "Unlock an episode", subtitle: "Shorts · Grammar in 60 Seconds · Ep 6", amount: -5, at: now - 3 * 24 * 60 * 60 * 1000 },
-      { id: "t2", type: "spend", title: "Unlock a clip", subtitle: "Discover · Practice feed video", amount: -5, at: now - 2 * 24 * 60 * 60 * 1000 },
-      { id: "t3", type: "earn", title: "Subscription bonus", subtitle: "Monthly plan bonus", amount: 50, at: now - 2 * 24 * 60 * 60 * 1000 + 6 * 60 * 60 * 1000 },
-      { id: "t4", type: "spend", title: "Image generation", subtitle: "Create · Request image", amount: -5, at: now - 20 * 60 * 60 * 1000 },
-    ];
-  }, []);
 
   if (!session.isLoggedIn) {
     return (
@@ -238,44 +228,6 @@ export default function Account() {
                   <div className="mt-4 text-sm text-zinc-600">
                     Diamonds are used for unlocking episodes and premium requests. Your balance updates instantly after each purchase.
                   </div>
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center gap-2 text-sm font-semibold text-zinc-900">
-                  <Receipt className="h-4 w-4" />
-                  Diamond usage
-                </div>
-                <div className="mt-4 divide-y divide-zinc-200">
-                  {diamondLedger.map((t) => (
-                    <div key={t.id} className="flex items-start justify-between gap-4 py-4">
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold text-zinc-900">{t.title}</div>
-                        <div className="mt-1 text-sm text-zinc-600">{t.subtitle}</div>
-                        <div className="mt-2 text-xs font-semibold text-zinc-500">
-                          {new Date(t.at).toLocaleString(undefined, { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                        </div>
-                      </div>
-                      <div
-                        className={cn(
-                          "shrink-0 rounded-full px-3 py-1 text-xs font-semibold",
-                          t.amount < 0 ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700",
-                        )}
-                      >
-                        {t.amount < 0 ? "" : "+"}
-                        {t.amount} 💎
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <div className="text-sm font-semibold text-zinc-900">How cancellation works</div>
-                <div className="mt-2 space-y-2 text-sm text-zinc-600">
-                  <div>1) Tap “Cancel subscription” to stop auto-renewal.</div>
-                  <div>2) Your plan stays active until the end of the current billing period.</div>
-                  <div>3) You can resubscribe anytime from the Subscription page.</div>
                 </div>
               </div>
             </div>

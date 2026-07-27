@@ -1,18 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Modal from "../components/Modal.jsx";
 import DiamondIcon from "../components/DiamondIcon.jsx";
+import FaqAccordion from "../components/FaqAccordion.jsx";
+import HomeFooter from "../components/HomeFooter.jsx";
 import { cn } from "../lib/utils.js";
 import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
 
 const planRank = (id) => (id === "year" ? 3 : id === "quarter" ? 2 : 1);
-
-const toNinetyNine = (amount) => {
-  const safe = Number(amount);
-  if (!Number.isFinite(safe) || safe <= 0) return 0;
-  const dollars = Math.floor(safe);
-  return Number((dollars + 0.99).toFixed(2));
-};
 
 const fmt = (amount) => `$${Number(amount).toFixed(2)}`;
 
@@ -20,51 +15,84 @@ export default function Subscribe() {
   const session = useAppStore((s) => s.session);
   const subscription = useAppStore((s) => s.subscription);
   const diamonds = useAppStore((s) => s.diamonds);
-  const subscribeToPlan = useAppStore((s) => s.subscribeToPlan);
   const addDiamonds = useAppStore((s) => s.addDiamonds);
+  const subscribeToPlan = useAppStore((s) => s.subscribeToPlan);
   const openAuth = useUIStore((s) => s.openAuth);
 
   const plans = useMemo(() => {
-    const month = { id: "month", name: "Monthly", original: 9.99, discounted: 9.99, discountLabel: null, period: "/mo" };
-    const quarterOriginal = 28.99;
-    const yearOriginal = 118.99;
-    const quarterDiscounted = toNinetyNine(quarterOriginal * 0.7);
-    const yearDiscounted = toNinetyNine(yearOriginal * 0.3);
     return [
       {
-        ...month,
+        type: "plan",
+        id: "month",
+        name: "Monthly",
+        original: 9.99,
+        discounted: 9.99,
+        discountLabel: null,
+        period: "/month",
+        months: 1,
+        monthlyCredits: 8500,
+        totalCredits: 8500,
         highlight: false,
       },
       {
+        type: "plan",
         id: "quarter",
         name: "Quarterly",
-        original: quarterOriginal,
-        discounted: quarterDiscounted,
-        discountLabel: "30% OFF",
+        original: 29.99,
+        discounted: 26.99,
+        discountLabel: "10% OFF",
         period: "/quarter",
+        months: 3,
+        monthlyCredits: 8500,
+        totalCredits: 25500,
         highlight: false,
       },
       {
+        type: "plan",
         id: "year",
         name: "Yearly",
-        original: yearOriginal,
-        discounted: yearDiscounted,
-        discountLabel: "70% OFF",
+        original: 119.99,
+        discounted: 95.99,
+        discountLabel: "20% OFF",
         period: "/year",
+        months: 12,
+        monthlyCredits: 8500,
+        totalCredits: 102000,
         highlight: true,
       },
     ];
   }, []);
+  const diamondPacks = useMemo(
+    () => [
+      { type: "pack", id: "pack-s", name: "Small Pack", price: 6.99, diamonds: 5450 },
+      { type: "pack", id: "pack-m", name: "Standard Pack", price: 16.99, diamonds: 13350 },
+      { type: "pack", id: "pack-l", name: "Large Pack", price: 36.99, diamonds: 29000 },
+      { type: "pack", id: "pack-xl", name: "Ultra Pack", price: 69.99, diamonds: 54900 },
+    ],
+    [],
+  );
 
-  const diamondPacks = useMemo(() => {
-    const packs = [
-      { id: "d100", diamonds: 100, original: 9.9, multiplier: 0.8, label: "20% OFF" },
-      { id: "d300", diamonds: 300, original: 28.99, multiplier: 0.6, label: "40% OFF" },
-      { id: "d600", diamonds: 600, original: 58.99, multiplier: 0.4, label: "60% OFF" },
-      { id: "d1000", diamonds: 1000, original: 99.99, multiplier: 0.3, label: "70% OFF" },
-    ];
-    return packs.map((p) => ({ ...p, discounted: toNinetyNine(p.original * p.multiplier) }));
-  }, []);
+  const faqItems = useMemo(
+    () => [
+      {
+        q: "What do I get with subscription?",
+        a: "Subscription unlocks the full platform experience and gives you monthly credits you can use across supported premium features.",
+      },
+      {
+        q: "How are credits issued?",
+        a: "Credits are issued monthly according to your plan. Quarterly and yearly plans are also issued monthly rather than all at once.",
+      },
+      {
+        q: "Can I upgrade my plan later?",
+        a: "Yes. You can upgrade to a higher plan at any time. Downgrades are not supported in the current demo.",
+      },
+      {
+        q: "Do unused credits disappear?",
+        a: "Yes. Subscription credits expire at the end of each billing month.",
+      },
+    ],
+    [],
+  );
 
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
@@ -83,38 +111,15 @@ export default function Subscribe() {
   );
 
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmKind, setConfirmKind] = useState(null);
   const [confirmItem, setConfirmItem] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [pendingPack, setPendingPack] = useState(null);
 
   const isSubscribed = subscription.status === "active";
   const currentRank = subscription.planId ? planRank(subscription.planId) : 0;
 
-  useEffect(() => {
-    if (!session.isLoggedIn) return;
-    if (!pendingPack) return;
-    if (subscription.status === "active") {
-      openPackConfirm(pendingPack);
-      setPendingPack(null);
-      return;
-    }
-    const yearly = plans.find((p) => p.id === "year") || plans[0];
-    showToast("info", "Subscription required to buy 💎.");
-    openPlanConfirm(yearly);
-  }, [pendingPack, plans, session.isLoggedIn, subscription.status]);
-
-  const openPlanConfirm = (plan) => {
-    setConfirmKind("plan");
-    setConfirmItem(plan);
-    setPaymentMethod(null);
-    setConfirmOpen(true);
-  };
-
-  const openPackConfirm = (pack) => {
-    setConfirmKind("pack");
-    setConfirmItem(pack);
+  const openPurchaseConfirm = (item) => {
+    setConfirmItem(item);
     setPaymentMethod(null);
     setConfirmOpen(true);
   };
@@ -128,54 +133,36 @@ export default function Subscribe() {
       showToast("error", "Downgrades are not supported.");
       return;
     }
-    openPlanConfirm(plan);
+    openPurchaseConfirm(plan);
   };
 
   const onSelectPack = (pack) => {
     if (!session.isLoggedIn) {
-      setPendingPack(pack);
       openAuth({ mode: "login", postAuthPath: "/subscribe" });
       return;
     }
-    if (!isSubscribed) {
-      setPendingPack(pack);
-      const yearly = plans.find((p) => p.id === "year") || plans[0];
-      showToast("info", "Subscription required to buy 💎.");
-      openPlanConfirm(yearly);
-      return;
-    }
-    openPackConfirm(pack);
+    openPurchaseConfirm(pack);
   };
 
   const pay = async () => {
     if (!confirmItem || !paymentMethod) return;
     if (!session.isLoggedIn) return;
 
-    if (confirmKind === "pack" && !isSubscribed) {
-      setConfirmOpen(false);
-      showToast("info", "Subscription required to buy 💎.");
-      return;
-    }
-
     setSubmitting(true);
     await new Promise((r) => setTimeout(r, 850));
 
-    if (confirmKind === "plan") {
-      subscribeToPlan({ planId: confirmItem.id, bonusDiamonds: 150 });
+    if (confirmItem?.type === "pack") {
+      addDiamonds(confirmItem.diamonds, "reward");
+      showToast("success", "Diamonds added.");
+    } else {
+      subscribeToPlan({
+        planId: confirmItem.id,
+        bonusDiamonds: confirmItem.monthlyCredits,
+        monthlyCredits: confirmItem.monthlyCredits,
+        totalCredits: confirmItem.totalCredits,
+      });
       showToast("success", "Subscription activated.");
-      setConfirmOpen(false);
-      setSubmitting(false);
-      if (pendingPack) {
-        window.setTimeout(() => {
-          openPackConfirm(pendingPack);
-          setPendingPack(null);
-        }, 150);
-      }
-      return;
     }
-
-    addDiamonds(confirmItem.diamonds);
-    showToast("success", "💎 added.");
     setConfirmOpen(false);
     setSubmitting(false);
   };
@@ -194,14 +181,14 @@ export default function Subscribe() {
   };
 
   const rules = [
-    "Subscription unlocks all platform features.",
-    "Each subscription purchase includes 150 bonus 💎.",
-    "💎 packs require an active subscription.",
+    "Credits are issued monthly according to the selected plan.",
+    "Quarterly and yearly credits are issued monthly, not all at once.",
+    "Monthly subscription credits expire at the end of each billing month.",
     "You can upgrade to a higher plan; downgrades are not supported.",
   ];
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-8 pb-4">
       {toast ? (
         <div className="pointer-events-none fixed left-1/2 top-6 z-[60] -translate-x-1/2">
           <div
@@ -215,32 +202,19 @@ export default function Subscribe() {
         </div>
       ) : null}
 
-      <div className="flex items-end justify-between gap-4">
-        <div className="space-y-1">
-          <div className="text-base font-semibold text-zinc-900">Subscription</div>
-          <div className="text-sm text-zinc-600">
-            {isSubscribed ? (
-              <span className="inline-flex flex-wrap items-center gap-2">
-                <span>Current: {plans.find((p) => p.id === subscription.planId)?.name || "Subscription"}</span>
-                <span className="text-zinc-400">·</span>
-                <span className="inline-flex items-center gap-1">
-                  <DiamondIcon className="h-4 w-4" />
-                  <span>{diamonds.toLocaleString()}</span>
-                </span>
-              </span>
-            ) : (
-              "Choose a plan that fits you."
-            )}
-          </div>
-        </div>
+      <div className="space-y-1">
+        <div className="text-base font-semibold text-zinc-900">Subscription</div>
+        <div className="text-sm text-zinc-600">Choose a plan that fits you.</div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {plans.map((p) => (
+          (() => {
+            return (
           <div
             key={p.id}
             className={cn(
-              "relative rounded-3xl border bg-white p-6 shadow-sm",
+              "relative flex min-h-[340px] flex-col rounded-[32px] border bg-white p-6 shadow-sm",
               p.highlight ? "border-zinc-900" : "border-zinc-200",
             )}
           >
@@ -257,30 +231,35 @@ export default function Subscribe() {
                   <div className="text-3xl font-semibold text-zinc-900">{fmt(p.discounted)}</div>
                   <div className="pb-1 text-sm text-zinc-500">{p.period}</div>
                 </div>
-                {p.discountLabel ? (
-                  <div className="mt-2 flex items-center gap-2">
-                    <div className="rounded-full bg-emerald-600/10 px-3 py-1 text-xs font-semibold text-emerald-700">
-                      {p.discountLabel}
-                    </div>
-                    <div className="text-xs text-zinc-500">
-                      <span className="line-through">{fmt(p.original)}</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-2 text-xs text-zinc-500">
-                    <span className="line-through opacity-0">{fmt(p.original)}</span>
-                  </div>
-                )}
+                <div className="mt-2 flex min-h-6 items-center gap-2">
+                  {p.discountLabel ? (
+                    <>
+                      <span className="rounded-full bg-emerald-600/10 px-3 py-1 text-xs font-semibold text-emerald-700">{p.discountLabel}</span>
+                      <span className="text-xs text-zinc-400 line-through">{fmt(p.original)}</span>
+                    </>
+                  ) : (
+                    <span className="text-xs text-zinc-500">Billed monthly</span>
+                  )}
+                </div>
+                {p.months > 1 ? <div className="mt-2 text-xs text-zinc-500">Billed every {p.months} months</div> : null}
               </div>
             </div>
 
-            <div className="mt-5 space-y-2 text-sm text-zinc-700">
-              <div>All platform features</div>
-              <div className="inline-flex items-center gap-1">
-                <span>150 bonus</span>
+            <div className="mt-6 space-y-3 text-sm text-zinc-700">
+              <div className="inline-flex items-center gap-1 font-semibold text-zinc-900">
                 <DiamondIcon className="h-4 w-4" />
-                <span>/ month</span>
+                <span>{p.monthlyCredits.toLocaleString()} credits / month</span>
               </div>
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                <div className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Includes</div>
+                <div className="mt-3 space-y-2">
+                  <div>Unlock premium character videos</div>
+                  <div>Unlock short dramas and create continuation episodes</div>
+                  <div>Create your own characters</div>
+                  <div>View character images and videos in chat</div>
+                </div>
+              </div>
+              {p.months > 1 ? <div className="text-xs text-zinc-500">{p.totalCredits.toLocaleString()} credits across {p.months} months</div> : null}
             </div>
 
             <button
@@ -288,7 +267,7 @@ export default function Subscribe() {
               disabled={planButtonDisabled(p)}
               onClick={() => onSelectPlan(p)}
               className={cn(
-                "mt-6 w-full rounded-2xl px-4 py-3 text-sm font-semibold",
+                "mt-auto w-full rounded-2xl px-4 py-3 text-sm font-semibold",
                 p.highlight ? "bg-zinc-900 text-white hover:bg-zinc-800" : "bg-zinc-100 text-zinc-900 hover:bg-zinc-200",
                 planButtonDisabled(p) ? "cursor-not-allowed opacity-60 hover:bg-inherit" : "",
               )}
@@ -296,73 +275,81 @@ export default function Subscribe() {
               {planButtonLabel(p)}
             </button>
           </div>
+            );
+          })()
         ))}
       </div>
 
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <div className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-900">
-          <DiamondIcon className="h-4 w-4" />
-          Packs
-        </div>
-        <div className="mt-1 text-sm text-zinc-600">
-          Buy <span className="inline-flex items-center gap-1 align-middle"><DiamondIcon className="h-4 w-4" /></span> for content consumption. Subscription required.
+      <section className="space-y-4">
+        <div className="space-y-1">
+          <div className="text-base font-semibold text-zinc-900">Diamond packs</div>
+          <div className="text-sm text-zinc-600">One-time purchase for extra diamonds.</div>
         </div>
 
-        <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-4">
-          {diamondPacks.map((p) => (
-            <div key={p.id} className="rounded-3xl border border-zinc-200 bg-white p-5">
-              <div className="inline-flex items-center gap-1 text-base font-semibold text-zinc-900">
-                <DiamondIcon className="h-4 w-4" />
-                <span>{p.diamonds.toLocaleString()}</span>
-              </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {diamondPacks.map((pack) => (
+            <div key={pack.id} className="flex min-h-[220px] flex-col rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm">
+              <div className="text-sm font-semibold text-zinc-900">{pack.name}</div>
               <div className="mt-3 flex items-end gap-2">
-                <div className="text-2xl font-semibold text-zinc-900">{fmt(p.discounted)}</div>
-                <div className="pb-0.5 text-sm text-zinc-500">
-                  <span className="line-through">{fmt(p.original)}</span>
-                </div>
+                <div className="text-3xl font-semibold text-zinc-900">{fmt(pack.price)}</div>
               </div>
-              <div className="mt-2 rounded-full bg-emerald-600/10 px-3 py-1 text-xs font-semibold text-emerald-700 inline-flex">
-                {p.label}
+              <div className="mt-5 inline-flex items-center gap-1 text-base font-semibold text-zinc-900">
+                <DiamondIcon className="h-4 w-4" />
+                <span>{pack.diamonds.toLocaleString()} diamonds</span>
               </div>
+
               <button
                 type="button"
-                onClick={() => onSelectPack(p)}
-                className="mt-5 w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
+                onClick={() => onSelectPack(pack)}
+                className="mt-auto w-full rounded-2xl bg-zinc-100 px-4 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-200"
               >
-                Buy
+                Buy now
               </button>
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 text-sm text-zinc-700 shadow-sm">
-        <div className="text-sm font-semibold text-zinc-900">Rules</div>
-        <div className="mt-3 space-y-1">
-          {rules.map((r) => (
-            <div key={r}>{r}</div>
-          ))}
+      <section className="space-y-4">
+        <div className="rounded-[32px] border border-zinc-200 bg-white p-6 shadow-sm">
+          <div className="text-base font-semibold text-zinc-900">Plan rules</div>
+          <div className="mt-4 space-y-3 text-sm text-zinc-700">
+            {rules.map((r) => (
+              <div key={r} className="rounded-2xl bg-zinc-50 px-4 py-3">
+                {r}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+
+        <div className="rounded-[32px] border border-zinc-200 bg-white p-6 shadow-sm">
+          <div className="text-base font-semibold text-zinc-900">FAQ</div>
+          <div className="mt-5">
+            <FaqAccordion items={faqItems} />
+          </div>
+        </div>
+      </section>
+
+      <HomeFooter />
 
       <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} title="Confirm purchase" className="max-w-xl">
         <div className="space-y-5">
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
             <div className="text-sm font-semibold text-zinc-900">
-              {confirmKind === "plan"
-                ? `${confirmItem?.name || "Subscription"}`
-                : null}
-              {confirmKind === "pack" ? (
-                <span className="inline-flex items-center gap-1">
-                  <DiamondIcon className="h-4 w-4" />
-                  <span>{confirmItem?.diamonds?.toLocaleString?.() || 0}</span>
-                </span>
-              ) : null}
+              {confirmItem?.name || "Subscription"}
             </div>
             <div className="mt-1 text-sm text-zinc-600">
               Amount:{" "}
               <span className="font-semibold text-zinc-900">
-                {confirmItem ? fmt(confirmKind === "plan" ? confirmItem.discounted : confirmItem.discounted) : "-"}
+                {confirmItem ? fmt(confirmItem.type === "pack" ? confirmItem.price : confirmItem.discounted) : "-"}
+              </span>
+            </div>
+            <div className="mt-2 inline-flex items-center gap-1 text-sm text-zinc-600">
+              <DiamondIcon className="h-4 w-4" />
+              <span>
+                {confirmItem?.type === "pack"
+                  ? `${confirmItem?.diamonds?.toLocaleString?.() || 0} diamonds added instantly`
+                  : `${confirmItem?.monthlyCredits?.toLocaleString?.() || 0} credits issued today and monthly thereafter`}
               </span>
             </div>
           </div>

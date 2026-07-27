@@ -68,8 +68,11 @@ export const useAppStore = create(
       conversations: [],
       mediaRequests: { used: 0 },
       unlockedShortEpisodes: {},
+      unlockedShortNodes: {},
+      shortContinuationJobs: [],
       unlockedFeedVideos: {},
       favoriteShorts: ["s1", "s2"],
+      likedShorts: [],
       favoriteLiveHosts: ["l1"],
       favoriteCharacters: ["c2", "c3"],
 
@@ -163,7 +166,7 @@ export const useAppStore = create(
           },
         })),
 
-      subscribeToPlan: ({ planId, bonusDiamonds = 0 } = {}) =>
+      subscribeToPlan: ({ planId, bonusDiamonds = 0, monthlyCredits = 0, totalCredits = 0 } = {}) =>
         set((state) => {
           const now = Date.now();
           const days = planId === "year" ? 365 : planId === "quarter" ? 90 : 30;
@@ -183,6 +186,48 @@ export const useAppStore = create(
               status: "active",
               renew: true,
               expiresAt: now + days * 24 * 60 * 60 * 1000,
+              monthlyCredits: Math.max(0, Number(monthlyCredits) || 0),
+              totalCredits: Math.max(0, Number(totalCredits) || 0),
+              nextCreditAt: planId === "month" ? null : now + 30 * 24 * 60 * 60 * 1000,
+              creditedMonths: 1,
+            },
+            diamondWallets: wallets,
+            diamondBreakdown: {
+              free: nextWallet.free,
+              subscription: nextWallet.subscription,
+              reward: nextWallet.reward,
+            },
+            diamonds: totalDiamondsOf(nextWallet),
+          };
+        }),
+
+      syncSubscriptionCredits: () =>
+        set((state) => {
+          const subscription = state.subscription || {};
+          const accountKey = state.session?.accountKey;
+          const monthlyCredits = Math.max(0, Number(subscription.monthlyCredits) || 0);
+          const totalMonths = subscription.planId === "year" ? 12 : subscription.planId === "quarter" ? 3 : 1;
+          const creditedMonths = Math.max(1, Number(subscription.creditedMonths) || 1);
+          const nextCreditAt = Number(subscription.nextCreditAt) || 0;
+          const now = Date.now();
+          if (!accountKey || !monthlyCredits || !nextCreditAt || creditedMonths >= totalMonths || now < nextCreditAt) return {};
+
+          const dueMonths = Math.min(
+            totalMonths - creditedMonths,
+            Math.floor((now - nextCreditAt) / (30 * 24 * 60 * 60 * 1000)) + 1,
+          );
+          const grant = dueMonths * monthlyCredits;
+          const wallets = { ...(state.diamondWallets || {}) };
+          const currentWallet = normalizeDiamondWallet(wallets[accountKey]);
+          const nextWallet = { ...currentWallet, subscription: currentWallet.subscription + grant };
+          wallets[accountKey] = nextWallet;
+          const nextCreditedMonths = creditedMonths + dueMonths;
+
+          return {
+            subscription: {
+              ...subscription,
+              creditedMonths: nextCreditedMonths,
+              nextCreditAt: nextCreditedMonths >= totalMonths ? null : nextCreditAt + dueMonths * 30 * 24 * 60 * 60 * 1000,
             },
             diamondWallets: wallets,
             diamondBreakdown: {
@@ -303,6 +348,50 @@ export const useAppStore = create(
         return { ok: true, alreadyUnlocked: false, cost: price };
       },
 
+      unlockShortNode: ({ nodeId, cost }) => {
+        const id = `${nodeId || ""}`;
+        const price = Math.max(0, Number(cost) || 0);
+        if (!id) return { ok: false, reason: "invalid" };
+        const accountKey = get().session?.accountKey;
+        if (!accountKey) return { ok: false, reason: "account" };
+        const current = get().unlockedShortNodes || {};
+        const accountUnlocks = current[accountKey] || {};
+        if (accountUnlocks[id]) return { ok: true, alreadyUnlocked: true, cost: 0 };
+        const ok = price ? get().spendDiamonds(price) : true;
+        if (!ok) return { ok: false, reason: "diamonds", cost: price };
+        set({
+          unlockedShortNodes: {
+            ...current,
+            [accountKey]: { ...accountUnlocks, [id]: true },
+          },
+        });
+        return { ok: true, alreadyUnlocked: false, cost: price };
+      },
+
+      createShortContinuation: ({ dramaId, parentNodeId, episode, prompt, isPublic = true, cost = 2700, kind = "continue" }) => {
+        const cleanPrompt = `${prompt || ""}`.trim();
+        if (!dramaId || !parentNodeId || !cleanPrompt) return { ok: false, reason: "invalid" };
+        const ownerKey = get().session?.accountKey;
+        if (!ownerKey) return { ok: false, reason: "account" };
+        const price = Math.max(0, Number(cost) || 0);
+        if (price && !get().spendDiamonds(price)) return { ok: false, reason: "diamonds", cost: price };
+        const now = Date.now();
+        const job = {
+          id: `generated-${generateId()}`,
+          ownerKey,
+          dramaId,
+          parentNodeId,
+          episode: Math.max(2, Number(episode) || 2),
+          prompt: cleanPrompt,
+          isPublic: Boolean(isPublic),
+          kind: kind === "rewrite" ? "rewrite" : "continue",
+          createdAt: now,
+          readyAt: now + 10 * 1000,
+        };
+        set((state) => ({ shortContinuationJobs: [job, ...(state.shortContinuationJobs || [])] }));
+        return { ok: true, job, cost: price };
+      },
+
       unlockFeedVideo: ({ feedId, cost }) => {
         const id = `${feedId || ""}`;
         const price = Math.max(0, Number(cost) || 0);
@@ -325,6 +414,15 @@ export const useAppStore = create(
           const current = Array.isArray(state.favoriteShorts) ? state.favoriteShorts : [];
           const exists = current.includes(id);
           return { favoriteShorts: exists ? current.filter((x) => x !== id) : [id, ...current] };
+        }),
+
+      toggleLikeShort: (dramaId) =>
+        set((state) => {
+          const id = `${dramaId || ""}`;
+          if (!id) return {};
+          const current = Array.isArray(state.likedShorts) ? state.likedShorts : [];
+          const exists = current.includes(id);
+          return { likedShorts: exists ? current.filter((x) => x !== id) : [id, ...current] };
         }),
 
       toggleFavoriteLiveHost: (hostId) =>
@@ -584,8 +682,11 @@ export const useAppStore = create(
         conversations: state.conversations,
         mediaRequests: state.mediaRequests,
         unlockedShortEpisodes: state.unlockedShortEpisodes,
+        unlockedShortNodes: state.unlockedShortNodes,
+        shortContinuationJobs: state.shortContinuationJobs,
         unlockedFeedVideos: state.unlockedFeedVideos,
         favoriteShorts: state.favoriteShorts,
+        likedShorts: state.likedShorts,
         favoriteLiveHosts: state.favoriteLiveHosts,
         favoriteCharacters: state.favoriteCharacters,
       }),

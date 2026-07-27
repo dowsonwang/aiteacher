@@ -14,6 +14,8 @@ export default function SubscriptionManagement() {
   const planLabel =
     subscription.planId === "month"
       ? t(language, "subscribe_plan_month")
+      : subscription.planId === "quarter"
+        ? "Quarterly"
       : subscription.planId === "year"
         ? t(language, "subscribe_plan_year")
         : subscription.planId || "-";

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import AuthModal from "../components/AuthModal.jsx";
 import LanguageModal from "../components/LanguageModal.jsx";
@@ -5,13 +6,19 @@ import ShareModal from "../components/ShareModal.jsx";
 import Sidebar from "../components/Sidebar.jsx";
 import TopBar from "../components/TopBar.jsx";
 import { cn } from "../lib/utils.js";
+import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
 
 export default function AppShell() {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
+  const syncSubscriptionCredits = useAppStore((s) => s.syncSubscriptionCredits);
   const expandedSidebarWidth = 224;
   const mainHorizontalPadding = 48;
   const collapsedMaxWidth = `calc(100vw - ${expandedSidebarWidth + mainHorizontalPadding}px)`;
+
+  useEffect(() => {
+    syncSubscriptionCredits();
+  }, [syncSubscriptionCredits]);
 
   return (
     <div className="h-dvh w-full bg-zinc-50">
