@@ -472,14 +472,18 @@ export default function Create() {
       showToast("error", "请先生成并确认提示词");
       return;
     }
-    if (isRegenerate) {
-      const ok = spendDiamonds(5);
+    const portraitCost = 2;
+    const shouldCharge = isRegenerate || !hasFreeCreation;
+    if (shouldCharge) {
+      const ok = spendDiamonds(portraitCost);
       if (!ok) {
         openDiamondUpsell({
           title: "Not enough diamonds",
-          description: "Regenerate the portrait by subscribing or buying a diamond pack in this modal.",
-          cost: 5,
-          source: "create-portrait-regenerate",
+          description: isRegenerate
+            ? "Regenerate the portrait by subscribing or buying a diamond pack in this modal."
+            : "Generate images for this character by subscribing or buying a diamond pack in this modal.",
+          cost: portraitCost,
+          source: isRegenerate ? "create-portrait-regenerate" : "create-portrait-generate",
         });
         return;
       }
@@ -546,18 +550,10 @@ export default function Create() {
     updateCharacterCreation(record.id, { texts, isPublic: Boolean(isPublic) });
     const res = completeCharacterCreation({ creationId: record.id, isPublic: Boolean(isPublic) });
     if (!res?.ok) {
-      if (res?.reason === "diamonds") {
-        openDiamondUpsell({
-          title: "Not enough diamonds",
-          description: "Finish creating this character by subscribing or buying a diamond pack in this modal.",
-          cost: 5,
-          source: "create-character-finish",
-        });
-      }
       if (res?.reason === "login") showToast("error", "请先登录");
       return;
     }
-    showToast("success", res?.charged ? "人物已创建（已扣 5 钻石）" : "人物已创建（首个免费）");
+    showToast("success", "人物已创建");
   };
 
   const onStartChat = () => {
@@ -588,21 +584,11 @@ export default function Create() {
                     className="inline-flex min-w-[180px] items-center justify-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-sm font-semibold text-zinc-950 hover:bg-zinc-100"
                   >
                     <Sparkles className="h-4 w-4" />
-                    {hasFreeCreation ? (
-                      "创建人物"
-                    ) : (
-                      <span className="inline-flex items-center gap-2">
-                        <span>创建人物</span>
-                        <span className="inline-flex items-center gap-1 rounded-full bg-zinc-900 px-2.5 py-1 text-xs font-semibold text-white">
-                          <DiamondIcon className="h-3.5 w-3.5 text-sky-300" />
-                          <span>5</span>
-                        </span>
-                      </span>
-                    )}
+                    创建人物
                   </button>
                 </div>
 
-                <div className="mt-4 text-sm font-medium text-white/82">每个用户可免费创建 1 个角色</div>
+                <div className="mt-4 text-sm font-medium text-white/82">创建人物免费，首次人物生图免费</div>
               </div>
 
               <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
@@ -1115,15 +1101,25 @@ export default function Create() {
                       重新生成图片
                       <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold text-white">
                         <DiamondIcon className="h-3.5 w-3.5 text-sky-200" />
-                        <span>5</span>
+                        <span>2</span>
                       </span>
                     </span>
                   ) : (
-                    "生成图片"
+                    hasFreeCreation ? (
+                      "首次生成免费"
+                    ) : (
+                      <span className="inline-flex items-center gap-2">
+                        生成图片
+                        <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold text-white">
+                          <DiamondIcon className="h-3.5 w-3.5 text-sky-200" />
+                          <span>2</span>
+                        </span>
+                      </span>
+                    )
                   )}
                 </button>
               </div>
-              <div className="mt-2 text-xs text-zinc-500">首次生成免费，重新生成将消耗 5 钻石。</div>
+              <div className="mt-2 text-xs text-zinc-500">首次创建人物生图免费；后续人物生图和重新生成均消耗 2 钻石。</div>
             </div>
 
             <div className="flex flex-col rounded-[26px] border border-zinc-200 bg-white p-5">

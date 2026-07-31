@@ -187,10 +187,10 @@ export default function DiamondUpsellModal() {
                     {plan.months > 1 ? <div className="mt-2 text-xs text-zinc-500">Billed every {plan.months} months</div> : null}
                     <div className="mt-5 inline-flex items-center gap-1 text-base font-semibold text-zinc-900">
                       <DiamondIcon className="h-4 w-4" />
-                      <span>{plan.monthlyCredits.toLocaleString()} credits / month</span>
+                      <span>{plan.monthlyCredits.toLocaleString()} diamonds / month</span>
                     </div>
                     {plan.months > 1 ? (
-                      <div className="mt-2 text-xs text-zinc-500">{plan.totalCredits.toLocaleString()} credits across {plan.months} months</div>
+                      <div className="mt-2 text-xs text-zinc-500">{plan.totalCredits.toLocaleString()} diamonds across {plan.months} months</div>
                     ) : null}
                     <button
                       type="button"

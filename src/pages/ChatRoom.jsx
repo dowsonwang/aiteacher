@@ -20,8 +20,8 @@ import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
 import { shortDramas } from "../data/mock.js";
 
-const requestImageCost = 40;
-const requestVideoCost = 750;
+const requestImageCost = 1;
+const requestVideoCost = 2;
 
 const buildAssistantReply = ({ characterName, userText }) => {
   const text = userText.trim();
@@ -85,6 +85,7 @@ export default function ChatRoom() {
   const conversations = useAppStore((s) => s.conversations);
   const sendMessage = useAppStore((s) => s.sendMessage);
   const replyAsAssistant = useAppStore((s) => s.replyAsAssistant);
+  const subscription = useAppStore((s) => s.subscription);
   const mediaRequests = useAppStore((s) => s.mediaRequests);
   const consumeMediaRequest = useAppStore((s) => s.consumeMediaRequest);
   const getMediaRequestSummary = useAppStore((s) => s.getMediaRequestSummary);
@@ -126,7 +127,9 @@ export default function ChatRoom() {
   const aiVideoSrc = useMemo(() => `/images/chat/ai-reply-01.mp4?v=${assetVersion}`, [assetVersion]);
   const aiVideoFallback = useMemo(() => `/videos/chat/ai-reply-01.mp4?v=${assetVersion}`, [assetVersion]);
 
-  const quota = useMemo(() => getMediaRequestSummary({ freeLimit: 3 }), [getMediaRequestSummary, mediaRequests]);
+  const isSubscribed = subscription.status === "active";
+  const freeMediaLimit = isSubscribed ? 0 : 3;
+  const quota = useMemo(() => getMediaRequestSummary({ freeLimit: freeMediaLimit }), [getMediaRequestSummary, freeMediaLimit, mediaRequests]);
   const [freeExhaustedOpen, setFreeExhaustedOpen] = useState(false);
 
   const [mediaOpen, setMediaOpen] = useState(false);
@@ -164,9 +167,9 @@ export default function ChatRoom() {
 
   const requestMedia = async (kind) => {
     if (!conversation) return;
-    const beforeFreeLeft = quota.freeLeft;
     const cost = kind === "video" ? requestVideoCost : requestImageCost;
-    const result = consumeMediaRequest({ freeLimit: 3, cost });
+    const beforeFreeLeft = quota.freeLeft;
+    const result = consumeMediaRequest({ freeLimit: freeMediaLimit, cost });
     if (!result.ok) {
       if (result.reason === "diamonds") {
         openDiamondUpsell({
@@ -204,7 +207,18 @@ export default function ChatRoom() {
     showToast("success", "Request sent.");
 
     if (beforeFreeLeft > 0 && result.freeLeft <= 0) setFreeExhaustedOpen(true);
+
   };
+
+  const freeRequestsModal = (
+    <Modal open={freeExhaustedOpen} onClose={() => setFreeExhaustedOpen(false)} title="Free requests used up" className="max-w-md">
+      <div className="text-sm text-zinc-600">Your 3 free image or video requests are used up. Subscribe or buy diamonds to continue.</div>
+      <div className="mt-5 flex items-center justify-end gap-2">
+        <button type="button" onClick={() => setFreeExhaustedOpen(false)} className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50">Cancel</button>
+        <button type="button" onClick={() => { setFreeExhaustedOpen(false); navigate("/subscribe"); }} className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800">View plans</button>
+      </div>
+    </Modal>
+  );
 
   const panelBlocks = useMemo(() => (character ? pickProfileBlocks(character.id) : []), [character?.id]);
   const isFavorited = useMemo(
@@ -335,35 +349,7 @@ export default function ChatRoom() {
         ) : null}
       </Modal>
 
-      <Modal
-        open={freeExhaustedOpen}
-        onClose={() => setFreeExhaustedOpen(false)}
-        title="Free requests used up"
-        className="max-w-md"
-      >
-        <div className="text-sm text-zinc-600">
-          Your 3 free requests are used up. To get more, please subscribe.
-        </div>
-        <div className="mt-5 flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => setFreeExhaustedOpen(false)}
-            className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setFreeExhaustedOpen(false);
-              navigate("/subscription");
-            }}
-            className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
-          >
-            Subscribe
-          </button>
-        </div>
-      </Modal>
+      {freeRequestsModal}
 
       <div className="flex h-full min-h-0 flex-col lg:border-r lg:border-zinc-200">
         <div className="flex items-start justify-between gap-3 border-b border-zinc-200 px-5 py-4">
@@ -527,12 +513,10 @@ export default function ChatRoom() {
             >
               <ImageIcon className="h-4 w-4" />
               {t(language, "chat_request_image")}
-              {quota.freeLeft <= 0 ? (
-                <span className="inline-flex items-center gap-1 text-zinc-700">
-                  <Gem className="h-3.5 w-3.5" />
-                  {requestImageCost}
-                </span>
-              ) : null}
+              <span className="inline-flex items-center gap-1 text-zinc-700">
+                <Gem className="h-3.5 w-3.5" />
+                {requestImageCost}
+              </span>
             </button>
             <button
               type="button"
@@ -541,18 +525,12 @@ export default function ChatRoom() {
             >
               <VideoIcon className="h-4 w-4" />
               {t(language, "chat_request_video")}
-              {quota.freeLeft <= 0 ? (
-                <span className="inline-flex items-center gap-1 text-zinc-700">
-                  <Gem className="h-3.5 w-3.5" />
-                  {requestVideoCost}
-                </span>
-              ) : null}
+              <span className="inline-flex items-center gap-1 text-zinc-700">
+                <Gem className="h-3.5 w-3.5" />
+                {requestVideoCost}
+              </span>
             </button>
-            {quota.freeLeft > 0 ? (
-              <div className="ml-auto text-[11px] text-zinc-500">
-                Free requests left: <span className="font-semibold text-zinc-700">{quota.freeLeft}</span>/3
-              </div>
-            ) : null}
+            <div className="ml-auto text-[11px] font-medium text-emerald-700">Text chat is always free</div>
           </div>
 
           <div className="mt-3 flex items-center gap-2">

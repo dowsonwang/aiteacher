@@ -16,7 +16,7 @@ import { cn } from "../lib/utils.js";
 import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
 
-const generationCost = 2700;
+const generationCost = 45;
 const generationDurationSeconds = 10;
 const promptMaxLength = 1200;
 const playbackRateOptions = [0.75, 1, 1.25, 1.5, 2];

@@ -23,7 +23,7 @@ export default function Subscribe() {
     () => [
       {
         q: "What do I get with subscription?",
-        a: "Subscription unlocks the full platform experience and gives you monthly credits you can use across supported premium features.",
+        a: "Text chat is already free for everyone. Subscription gives you 100 diamonds every month for character images, chat media, short drama creation, and Discover unlocks.",
       },
       {
         q: "How are credits issued?",
@@ -34,8 +34,8 @@ export default function Subscribe() {
         a: "Yes. You can upgrade to a higher plan at any time. Downgrades are not supported in the current demo.",
       },
       {
-        q: "Do unused credits disappear?",
-        a: "Yes. Subscription credits expire at the end of each billing month.",
+        q: "Is text chat free?",
+        a: "Yes. Text chat is always free with no message limits and never uses diamonds.",
       },
     ],
     [],
@@ -145,11 +145,30 @@ export default function Subscribe() {
       ) : null}
 
       <div className="space-y-1">
-        <div className="text-base font-semibold text-zinc-900">Subscription</div>
-        <div className="text-sm text-zinc-600">Choose a plan that fits you.</div>
+        <div className="text-base font-semibold text-zinc-900">Choose your subscription</div>
+        <div className="text-sm text-zinc-600">Every plan includes 100 diamonds per month. Longer plans lower the monthly price.</div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="relative flex min-h-[340px] flex-col rounded-[32px] border border-emerald-200 bg-emerald-50/60 p-6 shadow-sm">
+          <div className="absolute -top-3 left-6 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white">Free</div>
+          <div className="text-sm font-semibold text-zinc-900">Free plan</div>
+          <div className="mt-3 flex items-end gap-2">
+            <div className="text-3xl font-semibold text-zinc-900">$0</div>
+            <div className="pb-1 text-sm text-zinc-500">/forever</div>
+          </div>
+          <div className="mt-2 text-xs text-zinc-500">Try the core experience before subscribing.</div>
+          <div className="mt-6 rounded-2xl border border-emerald-200 bg-white/80 p-4 text-sm text-zinc-700">
+            <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Includes</div>
+            <div className="mt-3 space-y-2">
+              <div>Limited-time free chat</div>
+              <div>1 free character creation</div>
+              <div>3 free image or video requests</div>
+              <div className="inline-flex items-center gap-1"><DiamondIcon className="h-4 w-4" />5 free diamonds every day</div>
+            </div>
+          </div>
+          <div className="mt-auto rounded-2xl bg-emerald-100 px-4 py-3 text-center text-sm font-semibold text-emerald-800">Current free access</div>
+        </div>
         {plans.map((p) => (
           (() => {
             return (
@@ -190,18 +209,19 @@ export default function Subscribe() {
             <div className="mt-6 space-y-3 text-sm text-zinc-700">
               <div className="inline-flex items-center gap-1 font-semibold text-zinc-900">
                 <DiamondIcon className="h-4 w-4" />
-                <span>{p.monthlyCredits.toLocaleString()} credits / month</span>
+                <span>{p.monthlyCredits.toLocaleString()} diamonds / month</span>
               </div>
               <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
                 <div className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Includes</div>
                 <div className="mt-3 space-y-2">
-                  <div>Unlock premium character videos</div>
-                  <div>Unlock short dramas and create continuation episodes</div>
-                  <div>Create your own characters</div>
-                  <div>View character images and videos in chat</div>
+                  <div>Includes all Free plan benefits</div>
+                  <div>Unlimited free text chat</div>
+                  <div>Character image generation</div>
+                  <div>Chat image and video requests</div>
+                  <div>Short drama creation and Discover unlocks</div>
                 </div>
               </div>
-              {p.months > 1 ? <div className="text-xs text-zinc-500">{p.totalCredits.toLocaleString()} credits across {p.months} months</div> : null}
+              {p.months > 1 ? <div className="text-xs text-zinc-500">{p.totalCredits.toLocaleString()} diamonds across {p.months} months</div> : null}
             </div>
 
             <button
@@ -291,7 +311,7 @@ export default function Subscribe() {
               <span>
                 {confirmItem?.type === "pack"
                   ? `${confirmItem?.diamonds?.toLocaleString?.() || 0} diamonds added instantly`
-                  : `${confirmItem?.monthlyCredits?.toLocaleString?.() || 0} credits issued today and monthly thereafter`}
+                  : `${confirmItem?.monthlyCredits?.toLocaleString?.() || 0} diamonds issued today and monthly thereafter`}
               </span>
             </div>
           </div>

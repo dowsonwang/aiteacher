@@ -368,7 +368,7 @@ export const useAppStore = create(
         return { ok: true, alreadyUnlocked: false, cost: price };
       },
 
-      createShortContinuation: ({ dramaId, parentNodeId, episode, prompt, isPublic = true, cost = 2700, kind = "continue" }) => {
+      createShortContinuation: ({ dramaId, parentNodeId, episode, prompt, isPublic = true, cost = 45, kind = "continue" }) => {
         const cleanPrompt = `${prompt || ""}`.trim();
         if (!dramaId || !parentNodeId || !cleanPrompt) return { ok: false, reason: "invalid" };
         const ownerKey = get().session?.accountKey;
@@ -518,13 +518,6 @@ export const useAppStore = create(
         const record = list.find((r) => r.id === creationId);
         if (!record) return { ok: false, reason: "invalid" };
 
-        const myCreated = (Array.isArray(state.createdCharacters) ? state.createdCharacters : []).filter((c) => c?.ownerKey === accountKey);
-        const needPay = myCreated.length >= 1;
-        if (needPay) {
-          const ok = state.spendDiamonds(5);
-          if (!ok) return { ok: false, reason: "diamonds" };
-        }
-
         const appearance = record.appearance || {};
         const name = `${appearance.name || "Character"}`.trim() || "Character";
         const personality = Array.isArray(appearance.personality) ? appearance.personality : [];
@@ -556,7 +549,7 @@ export const useAppStore = create(
           return { characterCreations: nextCreations, createdCharacters: nextCreated };
         });
 
-        return { ok: true, characterId, charged: needPay, cost: needPay ? 5 : 0 };
+        return { ok: true, characterId, charged: false, cost: 0 };
       },
 
       deleteCharacterCreation: (creationId) =>

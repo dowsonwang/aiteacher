@@ -1,20 +1,18 @@
 import { useMemo, useRef, useState } from "react";
 import { useAppStore } from "../stores/useAppStore.js";
 import { cn } from "../lib/utils.js";
-import { CreditCard, Gem, X } from "lucide-react";
+import { CreditCard, Gem } from "lucide-react";
 
 export default function Account() {
   const session = useAppStore((s) => s.session);
   const updateSessionProfile = useAppStore((s) => s.updateSessionProfile);
   const subscription = useAppStore((s) => s.subscription);
   const diamonds = useAppStore((s) => s.diamonds);
-  const cancelSubscription = useAppStore((s) => s.cancelSubscription);
 
   const [name, setName] = useState(session.displayName || "");
   const [avatarUrl, setAvatarUrl] = useState(session.avatarUrl || "");
   const fileRef = useRef(null);
   const [tab, setTab] = useState("profile");
-  const [cancelOpen, setCancelOpen] = useState(false);
 
   const canSave = useMemo(() => {
     if (!session.isLoggedIn) return false;
@@ -201,19 +199,9 @@ export default function Account() {
                     </div>
                   </div>
 
-                  <div className="mt-5 flex flex-wrap items-center gap-2">
-                    {subscription.status === "active" ? (
-                      <button
-                        type="button"
-                        onClick={() => setCancelOpen(true)}
-                        className="inline-flex items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100"
-                      >
-                        Cancel subscription
-                      </button>
-                    ) : (
-                      <div className="text-sm text-zinc-600">Go to Subscription page to start a plan.</div>
-                    )}
-                  </div>
+                  {subscription.status !== "active" ? (
+                    <div className="mt-5 text-sm text-zinc-600">Go to Subscription page to start a plan.</div>
+                  ) : null}
                 </div>
 
                 <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
@@ -235,44 +223,6 @@ export default function Account() {
         </div>
       </div>
 
-      {cancelOpen ? (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/55 p-4">
-          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-4">
-              <div className="text-sm font-semibold text-zinc-900">Cancel subscription</div>
-              <button
-                type="button"
-                onClick={() => setCancelOpen(false)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-2xl hover:bg-zinc-100"
-              >
-                <X className="h-4 w-4 text-zinc-700" />
-              </button>
-            </div>
-            <div className="px-5 py-5 text-sm text-zinc-700">
-              Your subscription will remain active until the end of the current billing period. Auto-renew will be turned off.
-            </div>
-            <div className="flex items-center justify-end gap-2 border-t border-zinc-200 px-5 py-4">
-              <button
-                type="button"
-                onClick={() => setCancelOpen(false)}
-                className="inline-flex items-center justify-center rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-              >
-                Keep subscription
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  cancelSubscription();
-                  setCancelOpen(false);
-                }}
-                className="inline-flex items-center justify-center rounded-2xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
-              >
-                Confirm cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

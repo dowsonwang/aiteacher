@@ -59,7 +59,7 @@ export default function Feed() {
         id: "feed-02",
         videoSrc: `/videos/feed/feed-02.mp4?v=${assetVersion}`,
         requiresUnlock: true,
-        unlockCost: 5,
+        unlockCost: 2,
         username: "@nox",
         caption: "Learn 5 travel phrases you can use today—then practice with me.",
         tags: ["#english", "#travel"],
@@ -381,7 +381,7 @@ export default function Feed() {
       key: "feed-clip-list",
       target: clipListWrapRef.current,
       title: "解锁更多内容",
-      body: "右侧为该人物的视频列表。点击锁定视频可消耗 5 💎 解锁，观看更多精彩视频。",
+      body: "右侧为该人物的视频列表。点击锁定视频可消耗 2 💎 解锁，观看更多精彩视频。",
     },
   ];
 
@@ -471,7 +471,7 @@ export default function Feed() {
                       This clip is locked. Unlock to watch for{" "}
                       <span className="inline-flex items-center gap-1 font-semibold text-white">
                         <DiamondIcon className="h-4 w-4" />
-                        <span>{active.unlockCost || 5}</span>
+                        <span>{active.unlockCost || 2}</span>
                       </span>
                       .
                     </div>
@@ -480,13 +480,13 @@ export default function Feed() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        const r = unlockFeedVideo({ feedId: active.id, cost: active.unlockCost || 5 });
+                        const r = unlockFeedVideo({ feedId: active.id, cost: active.unlockCost || 2 });
                         if (!r.ok) {
                           if (r.reason === "diamonds") {
                             openDiamondUpsell({
                               title: "Not enough diamonds",
                               description: "Unlock this Discover video by subscribing or buying a diamond pack in this modal.",
-                              cost: active.unlockCost || 5,
+                              cost: active.unlockCost || 2,
                               source: "discover-main-video",
                             });
                           } else {
@@ -501,7 +501,7 @@ export default function Feed() {
                       <span>Unlock</span>
                       <span className="inline-flex items-center gap-1">
                         <DiamondIcon className="h-4 w-4" />
-                        <span>{active.unlockCost || 5}</span>
+                        <span>{active.unlockCost || 2}</span>
                       </span>
                     </button>
                     <div className="mt-3 text-xs text-white/70">
@@ -528,13 +528,13 @@ export default function Feed() {
                         type="button"
                         onClick={() => {
                           if (!unlocked && !clip.free) {
-                            const r = unlockFeedVideo({ feedId: clip.id, cost: 5 });
+                            const r = unlockFeedVideo({ feedId: clip.id, cost: 2 });
                             if (!r.ok) {
                               if (r.reason === "diamonds") {
                                 openDiamondUpsell({
                                   title: "Not enough diamonds",
                                   description: "Unlock this Discover clip by subscribing or buying a diamond pack in this modal.",
-                                  cost: 5,
+                                  cost: 2,
                                   source: "discover-clip",
                                 });
                               } else {
@@ -542,7 +542,7 @@ export default function Feed() {
                               }
                               return;
                             }
-                            showToast("success", r.alreadyUnlocked ? "Unlocked." : "Unlocked (-5 💎).");
+                            showToast("success", r.alreadyUnlocked ? "Unlocked." : "Unlocked (-2 💎).");
                           }
                           setSelectedClipId(clip.id);
                         }}
@@ -575,7 +575,7 @@ export default function Feed() {
                                 </div>
                                 <div className="mt-1 inline-flex items-center justify-center gap-1 text-xs font-semibold text-white/90">
                                   <DiamondIcon className="h-3.5 w-3.5" />
-                                  <span>5</span>
+                                  <span>2</span>
                                 </div>
                               </div>
                             </div>
