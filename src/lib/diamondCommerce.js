@@ -21,8 +21,8 @@ export const subscriptionPlans = [
     id: "quarter",
     name: "Quarterly",
     original: 29.97,
-    discounted: 26.99,
-    discountLabel: "10% OFF",
+    discounted: 20.99,
+    discountLabel: "30% OFF",
     period: "/quarter",
     months: 3,
     monthlyCredits: 100,
@@ -34,8 +34,8 @@ export const subscriptionPlans = [
     id: "year",
     name: "Yearly",
     original: 119.88,
-    discounted: 95.99,
-    discountLabel: "20% OFF",
+    discounted: 59.99,
+    discountLabel: "50% OFF",
     period: "/year",
     months: 12,
     monthlyCredits: 100,
@@ -48,7 +48,6 @@ export const diamondPacks = [
   { type: "pack", id: "pack-s", name: "Small Pack", price: 9.99, diamonds: 80 },
   { type: "pack", id: "pack-m", name: "Standard Pack", price: 19.99, diamonds: 165 },
   { type: "pack", id: "pack-l", name: "Large Pack", price: 49.99, diamonds: 430 },
-  { type: "pack", id: "pack-xl", name: "Ultra Pack", price: 99.99, diamonds: 900 },
 ];
 
 export const subscriptionRules = [
