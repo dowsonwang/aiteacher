@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Bookmark, ChevronRight, Heart, Play } from "lucide-react";
-import { characters, shortDramas, shortStoryBranches } from "../data/mock.js";
+import { characters, microDramaGuideSteps, shortDramas, shortStoryBranches } from "../data/mock.js";
 import { cn } from "../lib/utils.js";
 import { useAppStore } from "../stores/useAppStore.js";
 
@@ -222,15 +222,23 @@ export default function ShortStoryOverview() {
 
       <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 className="text-lg font-semibold text-zinc-950">How to play</h2>
-        <div className="mt-4 space-y-3 text-sm leading-7 text-zinc-600">
-          <p>Each Micro-Drama starts from an official first episode. Watch it, then shape what happens next.</p>
-          <p>
-            At the end of every episode you have two choices:{" "}
-            <span className="font-semibold text-zinc-900">Continue</span> to write the next episode, or{" "}
-            <span className="font-semibold text-zinc-900">Rewrite</span> to reimagine the current one with your own idea.
-          </p>
-          <p>Describe the direction you want, spend Diamonds, and a new video branch is generated from this node. Public branches can also be discovered and watched by other users.</p>
-          <p>Switch between episodes on the play page to explore different story lines created by you or the community.</p>
+        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+          {microDramaGuideSteps.map((step, index) => (
+            <article key={step.key} className="overflow-hidden rounded-[24px] border border-zinc-200 bg-zinc-50/60">
+              <div className="aspect-[4/3] overflow-hidden bg-zinc-100">
+                <img src={step.imageUrl} alt={step.title} className="h-full w-full object-cover" loading="lazy" />
+              </div>
+              <div className="p-4">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-zinc-950 text-xs font-semibold text-white">
+                    {index + 1}
+                  </span>
+                  <h3 className="text-sm font-semibold text-zinc-950">{step.title}</h3>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-zinc-600">{step.body}</p>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
     </div>

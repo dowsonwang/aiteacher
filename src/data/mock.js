@@ -638,3 +638,35 @@ export const feedItems = characters.map((c) => ({
     "portrait_16_9",
   ),
 }));
+
+// Micro-Dramas 玩法介绍三步图文（播放页 / SEO 介绍页共用）
+export const microDramaGuideSteps = [
+  {
+    key: "watch-official",
+    title: "Watch the official first episode",
+    body: "Every Micro-Drama opens with an official first episode. Watch it to meet the characters and understand where the story begins.",
+    imageUrl: imageUrl(
+      "Clean app screenshot of a vertical short drama video playing on a smartphone, dark cinematic frame, play button overlay, episode title bar at top, minimal modern UI, high quality mockup, no readable text",
+      "portrait_4_3",
+    ),
+  },
+  {
+    key: "continue",
+    title: "Continue the story yourself",
+    body: "When the episode ends, tap Continue and describe what should happen next. Spend Diamonds to generate a new video branch for the next episode.",
+    imageUrl: imageUrl(
+      "Clean app screenshot of a Continue episode composer modal on a smartphone, split layout with story recap on the left and a text input area on the right, primary Generate button with a diamond icon, minimal modern UI, high quality mockup, no readable text",
+      "portrait_4_3",
+    ),
+  },
+  {
+    key: "rewrite",
+    title: "Rewrite an episode you don't like",
+    body: "Not satisfied with how someone continued an episode? Tap Rewrite to reimagine the current episode with your own idea and branch from there.",
+    imageUrl: imageUrl(
+      "Clean app screenshot of a Rewrite episode composer modal on a smartphone, split layout with previous story recap on the left and a text input area on the right, primary Generate button with a diamond icon, minimal modern UI, high quality mockup, no readable text",
+      "portrait_4_3",
+    ),
+  },
+];
+

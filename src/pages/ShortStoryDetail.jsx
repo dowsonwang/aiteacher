@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import DiamondIcon from "../components/DiamondIcon.jsx";
 import Modal from "../components/Modal.jsx";
-import { shortDramas, shortStoryBranches } from "../data/mock.js";
+import { microDramaGuideSteps, shortDramas, shortStoryBranches } from "../data/mock.js";
 import { cn } from "../lib/utils.js";
 import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
@@ -837,19 +837,24 @@ export default function ShortStoryDetail() {
               </>
               ) : (
                 <div className="mt-5 space-y-4">
-                  <div className="rounded-[26px] border border-zinc-200 bg-white p-5">
-                    <h3 className="text-sm font-semibold text-zinc-950">How Micro-Dramas work</h3>
-                    <div className="mt-3 space-y-3 text-sm leading-6 text-zinc-600">
-                      <p>Each Micro-Drama starts from an official first episode. Watch it, then shape what happens next.</p>
-                      <p>
-                        At the end of every episode you have two choices:{" "}
-                        <span className="font-semibold text-zinc-900">Continue</span> to write the next episode, or{" "}
-                        <span className="font-semibold text-zinc-900">Rewrite</span> to reimagine the current one with your own idea.
-                      </p>
-                      <p>Describe the direction you want, spend Diamonds, and a new video branch is generated from this node. Public branches can also be discovered and watched by other users.</p>
-                      <p>Switch between episodes above to explore different story lines created by you or the community.</p>
+                  {microDramaGuideSteps.map((step, index) => (
+                    <div key={step.key} className="overflow-hidden rounded-[26px] border border-zinc-200 bg-white">
+                      <div className="grid sm:grid-cols-[200px_minmax(0,1fr)]">
+                        <div className="aspect-[4/3] overflow-hidden bg-zinc-100 sm:aspect-auto sm:h-full">
+                          <img src={step.imageUrl} alt={step.title} className="h-full w-full object-cover" loading="lazy" />
+                        </div>
+                        <div className="p-5">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-zinc-950 text-xs font-semibold text-white">
+                              {index + 1}
+                            </span>
+                            <h3 className="text-sm font-semibold text-zinc-950">{step.title}</h3>
+                          </div>
+                          <p className="mt-3 text-sm leading-6 text-zinc-600">{step.body}</p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
               )}
             </div>
