@@ -75,6 +75,7 @@ export default function ShortStoryDetail() {
   const [currentNodeId, setCurrentNodeId] = useState(baseNodes[0].id);
   const [path, setPath] = useState([baseNodes[0].id]);
   const [activeEpisode, setActiveEpisode] = useState(1);
+  const [storyTab, setStoryTab] = useState("episodes");
   const [isPlaying, setIsPlaying] = useState(true);
   const [prompt, setPrompt] = useState("");
   const [toast, setToast] = useState("");
@@ -679,12 +680,31 @@ export default function ShortStoryDetail() {
             </div>
 
             <div className="mt-6 border-t border-zinc-100 pt-6">
-              <div className="flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <h2 className="text-lg font-semibold text-zinc-950">Story line</h2>
-                </div>
+              <div className="flex items-center gap-5 border-b border-zinc-100">
+                <button
+                  type="button"
+                  onClick={() => setStoryTab("episodes")}
+                  className={cn(
+                    "border-b-2 pb-2 text-sm font-semibold transition",
+                    storyTab === "episodes" ? "border-zinc-950 text-zinc-950" : "border-transparent text-zinc-400 hover:text-zinc-700",
+                  )}
+                >
+                  Episodes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStoryTab("guide")}
+                  className={cn(
+                    "border-b-2 pb-2 text-sm font-semibold transition",
+                    storyTab === "guide" ? "border-zinc-950 text-zinc-950" : "border-transparent text-zinc-400 hover:text-zinc-700",
+                  )}
+                >
+                  How to play
+                </button>
               </div>
 
+              {storyTab === "episodes" ? (
+              <>
               <div className="mt-5 overflow-hidden rounded-[26px] border border-zinc-200 bg-white">
                 <div className="flex items-center gap-2 overflow-x-auto px-4 py-3">
                   {path.map((nodeId, index) => {
@@ -814,6 +834,24 @@ export default function ShortStoryDetail() {
                   );
                 })}
               </div>
+              </>
+              ) : (
+                <div className="mt-5 space-y-4">
+                  <div className="rounded-[26px] border border-zinc-200 bg-white p-5">
+                    <h3 className="text-sm font-semibold text-zinc-950">How Micro-Dramas work</h3>
+                    <div className="mt-3 space-y-3 text-sm leading-6 text-zinc-600">
+                      <p>Each Micro-Drama starts from an official first episode. Watch it, then shape what happens next.</p>
+                      <p>
+                        At the end of every episode you have two choices:{" "}
+                        <span className="font-semibold text-zinc-900">Continue</span> to write the next episode, or{" "}
+                        <span className="font-semibold text-zinc-900">Rewrite</span> to reimagine the current one with your own idea.
+                      </p>
+                      <p>Describe the direction you want, spend Diamonds, and a new video branch is generated from this node. Public branches can also be discovered and watched by other users.</p>
+                      <p>Switch between episodes above to explore different story lines created by you or the community.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </section>

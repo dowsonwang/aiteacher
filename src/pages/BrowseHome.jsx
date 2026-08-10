@@ -79,7 +79,7 @@ export default function BrowseHome() {
   const heroLinks = useMemo(
     () => [
       {
-        label: "Shorts",
+        label: "Micro-Dramas",
         href: "/shorts",
         Icon: Film,
         accent: "from-amber-200/60 via-orange-100/40 to-rose-200/50",
@@ -143,8 +143,8 @@ export default function BrowseHome() {
     {
       key: "home-hero-shorts",
       target: heroShortsRef.current,
-      title: "Shorts",
-      body: "进入 Shorts，浏览平台精选短剧内容，快速开始观看。",
+      title: "Micro-Dramas",
+      body: "进入 Micro-Dramas，浏览平台精选短剧内容，快速开始观看。",
     },
     {
       key: "home-hero-discover",
@@ -161,7 +161,7 @@ export default function BrowseHome() {
     {
       key: "home-shorts-module",
       target: homeShortsModuleRef.current,
-      title: "Recommended shorts",
+      title: "Crowdsourced Micro-Dramas",
       body: "这里展示当前推荐的短剧内容。你可以横向浏览卡片，并点击进入播放页。",
     },
     {
@@ -202,7 +202,7 @@ export default function BrowseHome() {
               Some characters are stories. Some are mirrors.
             </div>
             <div className="mt-3 max-w-[560px] text-sm leading-relaxed text-zinc-600 sm:text-[15px]">
-              Create AI characters, discover new personas, watch Shorts, and let them unfold into digital selves of their own. Chat, roleplay, follow their worlds, and see what parts of you answer back.
+              Create AI characters, discover new personas, watch Micro-Dramas, and let them unfold into digital selves of their own. Chat, roleplay, follow their worlds, and see what parts of you answer back.
             </div>
           </div>
 
@@ -241,7 +241,7 @@ export default function BrowseHome() {
 
         <section className="flex h-full flex-col overflow-hidden rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm">
           <div ref={homeShortsModuleRef} className="flex items-center justify-between gap-3">
-            <div className="text-base font-semibold text-zinc-900">Shorts</div>
+            <div className="text-base font-semibold text-zinc-900">Crowdsourced Micro-Dramas</div>
             <button type="button" onClick={() => navigate("/shorts")} className="text-sm font-medium text-zinc-600 hover:text-zinc-900">
               View all →
             </button>

@@ -111,7 +111,7 @@ export default function ShortStoryOverview() {
     <div className="mx-auto w-full max-w-6xl space-y-5 pb-12">
       <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-500">
         <Link to="/shorts" className="transition hover:text-zinc-900">
-          All shorts
+          All Micro-Dramas
         </Link>
         <ChevronRight className="h-4 w-4 text-zinc-300" />
         <span className="font-medium text-zinc-900">{drama.title}</span>
@@ -217,6 +217,20 @@ export default function ShortStoryOverview() {
               {label}
             </button>
           ))}
+        </div>
+      </section>
+
+      <section className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
+        <h2 className="text-lg font-semibold text-zinc-950">How to play</h2>
+        <div className="mt-4 space-y-3 text-sm leading-7 text-zinc-600">
+          <p>Each Micro-Drama starts from an official first episode. Watch it, then shape what happens next.</p>
+          <p>
+            At the end of every episode you have two choices:{" "}
+            <span className="font-semibold text-zinc-900">Continue</span> to write the next episode, or{" "}
+            <span className="font-semibold text-zinc-900">Rewrite</span> to reimagine the current one with your own idea.
+          </p>
+          <p>Describe the direction you want, spend Diamonds, and a new video branch is generated from this node. Public branches can also be discovered and watched by other users.</p>
+          <p>Switch between episodes on the play page to explore different story lines created by you or the community.</p>
         </div>
       </section>
     </div>

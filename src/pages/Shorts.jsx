@@ -61,9 +61,9 @@ export default function Shorts() {
             <Sparkles className="h-3.5 w-3.5 text-amber-300" />
             ORIGINAL STORY OPENINGS
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">Every story starts here.</h1>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">Every Micro-Drama starts here.</h1>
           <p className="mt-4 max-w-xl text-sm leading-7 text-zinc-300 sm:text-base">
-            Watch the official first episode, meet the characters, and discover the moment where each story begins. What happens next will be up to you.
+            Watch the official first episode, meet the characters, and discover the moment where each Micro-Drama begins. What happens next will be up to you.
           </p>
         </div>
       </section>

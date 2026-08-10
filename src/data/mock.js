@@ -30,7 +30,7 @@ export const banners = [
     id: "b3",
     title: "Short lessons that stick",
     subtitle: "Learn one pattern, then practice it in chat with a tutor.",
-    ctaText: "Watch Shorts",
+    ctaText: "Watch Micro-Dramas",
     href: "/shorts",
     imageUrl: imageUrl(
       "Cinematic collage background for short drama app banner, film grain, warm contrast, modern editorial style, high quality, no text",

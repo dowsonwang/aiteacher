@@ -652,7 +652,7 @@ export default function Feed() {
                         : "px-1 pb-2 text-sm font-semibold text-white/60 hover:text-white/85"
                     }
                   >
-                    Shorts
+                    Micro-Dramas
                     {activeTab === "shorts" ? <span className="absolute -bottom-0.5 left-0 right-0 h-0.5 bg-white" /> : null}
                   </button>
                 ) : null}

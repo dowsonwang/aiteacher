@@ -7,7 +7,7 @@ import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
 
 const tabs = [
-  { key: "shorts", label: "Shorts" },
+  { key: "shorts", label: "Micro-Dramas" },
   { key: "characters", label: "Characters" },
   { key: "created", label: "Created" },
 ];
