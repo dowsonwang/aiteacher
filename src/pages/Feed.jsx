@@ -484,7 +484,7 @@ export default function Feed() {
                         if (!r.ok) {
                           if (r.reason === "diamonds") {
                             openDiamondUpsell({
-                              title: "Not enough diamonds",
+                              title: "Not enough Diamonds",
                               description: "Unlock this Discover video by subscribing or buying a diamond pack in this modal.",
                               cost: active.unlockCost || 2,
                               source: "discover-main-video",
@@ -532,7 +532,7 @@ export default function Feed() {
                             if (!r.ok) {
                               if (r.reason === "diamonds") {
                                 openDiamondUpsell({
-                                  title: "Not enough diamonds",
+                                  title: "Not enough Diamonds",
                                   description: "Unlock this Discover clip by subscribing or buying a diamond pack in this modal.",
                                   cost: 2,
                                   source: "discover-clip",

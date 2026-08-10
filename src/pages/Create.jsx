@@ -478,7 +478,7 @@ export default function Create() {
       const ok = spendDiamonds(portraitCost);
       if (!ok) {
         openDiamondUpsell({
-          title: "Not enough diamonds",
+          title: "Not enough Diamonds",
           description: isRegenerate
             ? "Regenerate the portrait by subscribing or buying a diamond pack in this modal."
             : "Generate images for this character by subscribing or buying a diamond pack in this modal.",

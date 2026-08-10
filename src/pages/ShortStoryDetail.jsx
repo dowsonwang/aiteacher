@@ -439,7 +439,7 @@ export default function ShortStoryDetail() {
     if (!result.ok) {
       if (result.reason === "diamonds") {
         openDiamondUpsell({
-          title: "Not enough diamonds",
+          title: "Not enough Diamonds",
           description:
             createMode === "rewrite"
               ? "Rewrite this short drama branch by subscribing or buying a diamond pack in this modal."

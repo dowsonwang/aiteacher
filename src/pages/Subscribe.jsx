@@ -23,11 +23,15 @@ export default function Subscribe() {
     () => [
       {
         q: "What do I get with subscription?",
-        a: "Text chat is already free for everyone. Subscription gives you 100 diamonds every month for character images, chat media, short drama creation, and Discover unlocks.",
+        a: "Text chat is already free for everyone. A paid plan unlocks premium features. Some actions use Diamonds, such as character images, chat media, short drama creation, and Discover unlocks.",
       },
       {
-        q: "How are credits issued?",
-        a: "Credits are issued monthly according to your plan. Quarterly and yearly plans are also issued monthly rather than all at once.",
+        q: "How are Diamonds issued?",
+        a: "Get 100 Diamonds on Monthly, 300 on Quarterly, or 1,200 on Annual. Diamonds are issued upfront after each successful payment.",
+      },
+      {
+        q: "How does renewal work?",
+        a: "Subscriptions renew automatically until canceled. You can turn off auto-renew in Account; access continues through the end of your paid term.",
       },
       {
         q: "Can I upgrade my plan later?",
@@ -35,7 +39,7 @@ export default function Subscribe() {
       },
       {
         q: "Is text chat free?",
-        a: "Yes. Text chat is always free with no message limits and never uses diamonds.",
+        a: "Yes. Text chat is always free with no message limits and never uses Diamonds.",
       },
     ],
     [],
@@ -104,9 +108,7 @@ export default function Subscribe() {
     } else {
       subscribeToPlan({
         planId: confirmItem.id,
-        bonusDiamonds: confirmItem.monthlyCredits,
-        monthlyCredits: confirmItem.monthlyCredits,
-        totalCredits: confirmItem.totalCredits,
+        upfrontDiamonds: confirmItem.upfrontDiamonds,
       });
       showToast("success", "Subscription activated.");
     }
@@ -146,7 +148,9 @@ export default function Subscribe() {
 
       <div className="space-y-1">
         <div className="text-base font-semibold text-zinc-900">Choose your subscription</div>
-        <div className="text-sm text-zinc-600">Every plan includes 100 diamonds per month. Longer plans lower the monthly price.</div>
+        <div className="text-sm text-zinc-600">
+          Get 100 Diamonds on Monthly, 300 on Quarterly, or 1,200 on Annual. Diamonds are issued upfront after each successful payment.
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -164,7 +168,7 @@ export default function Subscribe() {
               <div>Limited-time free chat</div>
               <div>1 free character creation</div>
               <div>3 free image or video requests</div>
-              <div className="inline-flex items-center gap-1"><DiamondIcon className="h-4 w-4" />5 free diamonds every day</div>
+              <div className="inline-flex items-center gap-1"><DiamondIcon className="h-4 w-4" />5 free Diamonds every day</div>
             </div>
           </div>
           <div className="mt-auto rounded-2xl bg-emerald-100 px-4 py-3 text-center text-sm font-semibold text-emerald-800">Current free access</div>
@@ -189,27 +193,25 @@ export default function Subscribe() {
               <div>
                 <div className="text-sm font-semibold text-zinc-900">{p.name}</div>
                 <div className="mt-3 flex items-end gap-2">
-                  <div className="text-3xl font-semibold text-zinc-900">{formatUsd(p.discounted)}</div>
+                  <div className="text-3xl font-semibold text-zinc-900">{formatUsd(p.monthlyPrice)}</div>
                   <div className="pb-1 text-sm text-zinc-500">{p.period}</div>
                 </div>
                 <div className="mt-2 flex min-h-6 items-center gap-2">
                   {p.discountLabel ? (
                     <>
                       <span className="rounded-full bg-emerald-600/10 px-3 py-1 text-xs font-semibold text-emerald-700">{p.discountLabel}</span>
-                      <span className="text-xs text-zinc-400 line-through">{formatUsd(p.original)}</span>
+                      <span className="text-xs text-zinc-400 line-through">{formatUsd(p.originalMonthlyPrice)}</span>
                     </>
-                  ) : (
-                    <span className="text-xs text-zinc-500">Billed monthly</span>
-                  )}
+                  ) : null}
                 </div>
-                {p.months > 1 ? <div className="mt-2 text-xs text-zinc-500">Billed every {p.months} months</div> : null}
+                <div className="mt-2 text-xs text-zinc-500">{p.billingNote}</div>
               </div>
             </div>
 
             <div className="mt-6 space-y-3 text-sm text-zinc-700">
               <div className="inline-flex items-center gap-1 font-semibold text-zinc-900">
                 <DiamondIcon className="h-4 w-4" />
-                <span>{p.monthlyCredits.toLocaleString()} diamonds / month</span>
+                <span>{p.upfrontDiamonds.toLocaleString()} Diamonds upfront</span>
               </div>
               <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
                 <div className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Includes</div>
@@ -221,7 +223,6 @@ export default function Subscribe() {
                   <div>Short drama creation and Discover unlocks</div>
                 </div>
               </div>
-              {p.months > 1 ? <div className="text-xs text-zinc-500">{p.totalCredits.toLocaleString()} diamonds across {p.months} months</div> : null}
             </div>
 
             <button
@@ -242,10 +243,15 @@ export default function Subscribe() {
         ))}
       </div>
 
+      <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-xs text-zinc-600">
+        Subscriptions renew automatically until canceled. You can turn off auto-renew in Account; access continues through
+        the end of your paid term.
+      </div>
+
       <section className="space-y-4">
         <div className="space-y-1">
           <div className="text-base font-semibold text-zinc-900">Diamond packs</div>
-          <div className="text-sm text-zinc-600">One-time purchase for extra diamonds.</div>
+          <div className="text-sm text-zinc-600">One-time purchase for extra Diamonds. Diamond packs require an active subscription.</div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -257,7 +263,7 @@ export default function Subscribe() {
               </div>
               <div className="mt-5 inline-flex items-center gap-1 text-base font-semibold text-zinc-900">
                 <DiamondIcon className="h-4 w-4" />
-                <span>{pack.diamonds.toLocaleString()} diamonds</span>
+                <span>{pack.diamonds.toLocaleString()} Diamonds</span>
               </div>
 
               <button
@@ -303,18 +309,25 @@ export default function Subscribe() {
             <div className="mt-1 text-sm text-zinc-600">
               Amount:{" "}
               <span className="font-semibold text-zinc-900">
-                {confirmItem ? formatUsd(confirmItem.type === "pack" ? confirmItem.price : confirmItem.discounted) : "-"}
+                {confirmItem ? formatUsd(confirmItem.type === "pack" ? confirmItem.price : confirmItem.billedTotal) : "-"}
               </span>
             </div>
             <div className="mt-2 inline-flex items-center gap-1 text-sm text-zinc-600">
               <DiamondIcon className="h-4 w-4" />
               <span>
                 {confirmItem?.type === "pack"
-                  ? `${confirmItem?.diamonds?.toLocaleString?.() || 0} diamonds added instantly`
-                  : `${confirmItem?.monthlyCredits?.toLocaleString?.() || 0} diamonds issued today and monthly thereafter`}
+                  ? `${confirmItem?.diamonds?.toLocaleString?.() || 0} Diamonds added instantly`
+                  : `${confirmItem?.upfrontDiamonds?.toLocaleString?.() || 0} Diamonds issued upfront after payment`}
               </span>
             </div>
           </div>
+
+          {confirmItem?.type === "pack" ? null : (
+            <div className="rounded-2xl bg-zinc-50 px-4 py-3 text-xs text-zinc-600">
+              Subscriptions renew automatically until canceled. You can turn off auto-renew in Account; access continues
+              through the end of your paid term.
+            </div>
+          )}
 
           <div className="space-y-2">
             <div className="text-sm font-semibold text-zinc-900">Payment method</div>

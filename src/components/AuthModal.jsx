@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Chrome, Mail, ShieldCheck, X } from "lucide-react";
 import Modal from "./Modal.jsx";
+import AgeGateModal from "./AgeGateModal.jsx";
 import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
 
@@ -15,6 +16,8 @@ const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 export default function AuthModal() {
   const navigate = useNavigate();
   const login = useAppStore((s) => s.login);
+  const confirmAge = useAppStore((s) => s.confirmAge);
+  const hasConfirmedAge = useAppStore((s) => s.hasConfirmedAge);
   const authOpen = useUIStore((s) => s.authOpen);
   const authMode = useUIStore((s) => s.authMode);
   const setAuthMode = useUIStore((s) => s.setAuthMode);
@@ -28,6 +31,7 @@ export default function AuthModal() {
   const [sendingCode, setSendingCode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
+  const [pendingAuth, setPendingAuth] = useState(null);
   const toastTimer = useRef(null);
 
   const primaryBg = `/images/home/login.png?v=${assetVersion}`;
@@ -50,6 +54,7 @@ export default function AuthModal() {
     setSendingCode(false);
     setLoading(false);
     setToast(null);
+    setPendingAuth(null);
     setBgSrc(`/images/home/login.png?v=${nextVersion}`);
   }, [authOpen, authMode]);
 
@@ -80,6 +85,22 @@ export default function AuthModal() {
     if (next) navigate(next, { replace: true });
   };
 
+  const requestLogin = async (identity) => {
+    if (hasConfirmedAge(identity)) {
+      await doLogin(identity);
+      return;
+    }
+    setPendingAuth(identity);
+  };
+
+  const onAgeConfirm = async () => {
+    if (!pendingAuth) return;
+    const identity = pendingAuth;
+    confirmAge(identity);
+    setPendingAuth(null);
+    await doLogin(identity);
+  };
+
   const sendCode = async () => {
     if (!isValidEmail(email.trim())) {
       showToast("error", "Please enter a valid email address.");
@@ -107,7 +128,7 @@ export default function AuthModal() {
       return;
     }
     const displayName = email.includes("@") ? email.split("@")[0] : "User";
-    await doLogin({ displayName, email: email.trim(), provider: "email" });
+    await requestLogin({ displayName, email: email.trim(), provider: "email" });
   };
 
   const switchMode = () => {
@@ -115,6 +136,7 @@ export default function AuthModal() {
   };
 
   return (
+    <>
     <Modal open={authOpen} onClose={closeAuth} title={title} className="max-w-3xl">
       <div className="relative overflow-hidden rounded-2xl">
         {toast ? (
@@ -211,7 +233,7 @@ export default function AuthModal() {
               <div className="grid grid-cols-1 gap-2">
                 <button
                   type="button"
-                  onClick={() => doLogin({ displayName: "Google user", email: "google.user@example.com", provider: "google" })}
+                  onClick={() => requestLogin({ displayName: "Google user", email: "google.user@example.com", provider: "google" })}
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
                 >
                   <Chrome className="h-4 w-4" />
@@ -219,7 +241,7 @@ export default function AuthModal() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => doLogin({ displayName: "Discord user", email: "discord.user@example.com", provider: "discord" })}
+                  onClick={() => requestLogin({ displayName: "Discord user", email: "discord.user@example.com", provider: "discord" })}
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
                 >
                   <span className="text-base">🎮</span>
@@ -227,7 +249,7 @@ export default function AuthModal() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => doLogin({ displayName: "X user", email: "x.user@example.com", provider: "x" })}
+                  onClick={() => requestLogin({ displayName: "X user", email: "x.user@example.com", provider: "x" })}
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
                 >
                   <X className="h-4 w-4" />
@@ -258,5 +280,12 @@ export default function AuthModal() {
         </div>
       </div>
     </Modal>
+    <AgeGateModal
+      open={Boolean(pendingAuth)}
+      mode="signup"
+      onConfirm={onAgeConfirm}
+      onCancel={() => setPendingAuth(null)}
+    />
+    </>
   );
 }

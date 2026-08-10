@@ -57,6 +57,7 @@ export const useAppStore = create(
       diamondBreakdown: { free: 0, subscription: 0, reward: 0 },
       diamondWallets: {},
       diamondRewardNotice: { visible: false, amount: 0, utcDate: null },
+      ageConfirmations: {},
       subscription: {
         planId: null,
         status: "none",
@@ -87,6 +88,25 @@ export const useAppStore = create(
       },
 
       setLanguage: (language) => set({ language }),
+
+      hasConfirmedAge: ({ displayName = "", email = "", provider = "" } = {}) => {
+        const accountKey = makeAccountKey({ displayName, email, provider });
+        if (!accountKey) return false;
+        const record = get().ageConfirmations?.[accountKey];
+        return Boolean(record?.confirmed);
+      },
+
+      confirmAge: ({ displayName, email = "", provider = "" } = {}) =>
+        set((state) => {
+          const accountKey = makeAccountKey({ displayName, email, provider });
+          if (!accountKey) return {};
+          return {
+            ageConfirmations: {
+              ...(state.ageConfirmations || {}),
+              [accountKey]: { confirmed: true, confirmedAt: new Date().toISOString() },
+            },
+          };
+        }),
 
       login: ({ displayName, avatarUrl, email = "", provider = "" }) =>
         set((state) => {
@@ -166,17 +186,18 @@ export const useAppStore = create(
           },
         })),
 
-      subscribeToPlan: ({ planId, bonusDiamonds = 0, monthlyCredits = 0, totalCredits = 0 } = {}) =>
+      subscribeToPlan: ({ planId, upfrontDiamonds = 0 } = {}) =>
         set((state) => {
           const now = Date.now();
           const days = planId === "year" ? 365 : planId === "quarter" ? 90 : 30;
           const accountKey = state.session?.accountKey;
+          const grant = Math.max(0, Number(upfrontDiamonds) || 0);
           const wallets = { ...(state.diamondWallets || {}) };
           const currentWallet = normalizeDiamondWallet(wallets[accountKey]);
           const nextWallet = accountKey
             ? {
                 ...currentWallet,
-                subscription: currentWallet.subscription + Math.max(0, bonusDiamonds),
+                subscription: currentWallet.subscription + grant,
               }
             : currentWallet;
           if (accountKey) wallets[accountKey] = nextWallet;
@@ -186,48 +207,7 @@ export const useAppStore = create(
               status: "active",
               renew: true,
               expiresAt: now + days * 24 * 60 * 60 * 1000,
-              monthlyCredits: Math.max(0, Number(monthlyCredits) || 0),
-              totalCredits: Math.max(0, Number(totalCredits) || 0),
-              nextCreditAt: planId === "month" ? null : now + 30 * 24 * 60 * 60 * 1000,
-              creditedMonths: 1,
-            },
-            diamondWallets: wallets,
-            diamondBreakdown: {
-              free: nextWallet.free,
-              subscription: nextWallet.subscription,
-              reward: nextWallet.reward,
-            },
-            diamonds: totalDiamondsOf(nextWallet),
-          };
-        }),
-
-      syncSubscriptionCredits: () =>
-        set((state) => {
-          const subscription = state.subscription || {};
-          const accountKey = state.session?.accountKey;
-          const monthlyCredits = Math.max(0, Number(subscription.monthlyCredits) || 0);
-          const totalMonths = subscription.planId === "year" ? 12 : subscription.planId === "quarter" ? 3 : 1;
-          const creditedMonths = Math.max(1, Number(subscription.creditedMonths) || 1);
-          const nextCreditAt = Number(subscription.nextCreditAt) || 0;
-          const now = Date.now();
-          if (!accountKey || !monthlyCredits || !nextCreditAt || creditedMonths >= totalMonths || now < nextCreditAt) return {};
-
-          const dueMonths = Math.min(
-            totalMonths - creditedMonths,
-            Math.floor((now - nextCreditAt) / (30 * 24 * 60 * 60 * 1000)) + 1,
-          );
-          const grant = dueMonths * monthlyCredits;
-          const wallets = { ...(state.diamondWallets || {}) };
-          const currentWallet = normalizeDiamondWallet(wallets[accountKey]);
-          const nextWallet = { ...currentWallet, subscription: currentWallet.subscription + grant };
-          wallets[accountKey] = nextWallet;
-          const nextCreditedMonths = creditedMonths + dueMonths;
-
-          return {
-            subscription: {
-              ...subscription,
-              creditedMonths: nextCreditedMonths,
-              nextCreditAt: nextCreditedMonths >= totalMonths ? null : nextCreditAt + dueMonths * 30 * 24 * 60 * 60 * 1000,
+              upfrontDiamonds: grant,
             },
             diamondWallets: wallets,
             diamondBreakdown: {
@@ -670,6 +650,7 @@ export const useAppStore = create(
         diamondBreakdown: state.diamondBreakdown,
         diamondWallets: state.diamondWallets,
         diamondRewardNotice: state.diamondRewardNotice,
+        ageConfirmations: state.ageConfirmations,
         createdCharacters: state.createdCharacters,
         characterCreations: state.characterCreations,
         conversations: state.conversations,

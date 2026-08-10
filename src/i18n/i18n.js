@@ -37,6 +37,7 @@ const dictionaries = {
     chat_empty_title: "Pick a tutor to start",
     chat_not_found: "Conversation not found",
     chat_need_login: "Sign in to continue",
+    chat_ai_disclosure: "You're chatting with an AI character. Responses and media may be AI-generated.",
     chat_input_placeholder: "Type a message…",
     chat_send: "Send",
     chat_request_image: "Request Image",

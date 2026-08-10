@@ -344,7 +344,8 @@ export default function LiveRoom() {
             </div>
           ) : (
             <div className="text-sm text-zinc-700">
-              Paid gifts require an active subscription. Subscribe to unlock gifts and buy 💎.
+              A paid plan unlocks premium features. Some actions use Diamonds. Diamond packs require an active
+              subscription.
             </div>
           )}
 

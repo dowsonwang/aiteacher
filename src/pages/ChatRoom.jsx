@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  Bot,
   FileUp,
   Flag,
   Gem,
@@ -173,7 +174,7 @@ export default function ChatRoom() {
     if (!result.ok) {
       if (result.reason === "diamonds") {
         openDiamondUpsell({
-          title: "Not enough diamonds",
+          title: "Not enough Diamonds",
           description:
             kind === "video"
               ? "Request this chat video by subscribing or buying a diamond pack in this modal."
@@ -290,8 +291,8 @@ export default function ChatRoom() {
           {
             key: "chat-requests",
             target: requestButtonsRef.current,
-            title: "请求图片与视频",
-            body: "你可以向对方发起图片或视频请求，让对话内容更生动、更有趣。",
+            title: "Request image and video",
+            body: "Request an image or video from the AI character during the conversation.",
           },
         ]}
         onClose={() => setTourOpen(false)}
@@ -360,6 +361,11 @@ export default function ChatRoom() {
               <div className="truncate text-xs text-zinc-500">{character.tags?.join(" · ")}</div>
             </div>
           </div>
+        </div>
+
+        <div className="flex items-start gap-2 border-b border-zinc-200 bg-zinc-50 px-5 py-2.5">
+          <Bot className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
+          <p className="text-xs leading-relaxed text-zinc-600">{t(language, "chat_ai_disclosure")}</p>
         </div>
 
         <div ref={messagesRef} className="min-h-0 flex-1 space-y-3 overflow-auto px-5 py-4">

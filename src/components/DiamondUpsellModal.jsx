@@ -55,7 +55,7 @@ export default function DiamondUpsellModal() {
     return `${window.location.pathname}${window.location.search}`;
   }, []);
 
-  const title = diamondUpsellContext?.title || "Not enough diamonds";
+  const title = diamondUpsellContext?.title || "Not enough Diamonds";
   const description =
     diamondUpsellContext?.description || "Subscribe or buy a diamond pack below without leaving this page.";
 
@@ -98,9 +98,7 @@ export default function DiamondUpsellModal() {
     } else {
       subscribeToPlan({
         planId: selectedItem.id,
-        bonusDiamonds: selectedItem.monthlyCredits,
-        monthlyCredits: selectedItem.monthlyCredits,
-        totalCredits: selectedItem.totalCredits,
+        upfrontDiamonds: selectedItem.upfrontDiamonds,
       });
       showToast("success", "Subscription activated.");
     }
@@ -139,7 +137,7 @@ export default function DiamondUpsellModal() {
                   <span>{diamonds.toLocaleString()}</span>
                 </div>
                 {requiredAmount > 0 ? (
-                  <div className="mt-1 text-xs text-zinc-500">Need {requiredAmount.toLocaleString()} diamonds for this action.</div>
+                  <div className="mt-1 text-xs text-zinc-500">Need {requiredAmount.toLocaleString()} Diamonds for this action.</div>
                 ) : null}
               </div>
             </div>
@@ -169,7 +167,7 @@ export default function DiamondUpsellModal() {
                     ) : null}
                     <div className="text-sm font-semibold text-zinc-900">{plan.name}</div>
                     <div className="mt-3 flex items-end gap-2">
-                      <div className="text-3xl font-semibold text-zinc-900">{formatUsd(plan.discounted)}</div>
+                      <div className="text-3xl font-semibold text-zinc-900">{formatUsd(plan.monthlyPrice)}</div>
                       <div className="pb-1 text-sm text-zinc-500">{plan.period}</div>
                     </div>
                     <div className="mt-2 flex min-h-6 items-center gap-2">
@@ -178,20 +176,15 @@ export default function DiamondUpsellModal() {
                           <span className="rounded-full bg-emerald-600/10 px-3 py-1 text-xs font-semibold text-emerald-700">
                             {plan.discountLabel}
                           </span>
-                          <span className="text-xs text-zinc-400 line-through">{formatUsd(plan.original)}</span>
+                          <span className="text-xs text-zinc-400 line-through">{formatUsd(plan.originalMonthlyPrice)}</span>
                         </>
-                      ) : (
-                        <span className="text-xs text-zinc-500">Billed monthly</span>
-                      )}
+                      ) : null}
                     </div>
-                    {plan.months > 1 ? <div className="mt-2 text-xs text-zinc-500">Billed every {plan.months} months</div> : null}
+                    <div className="mt-2 text-xs text-zinc-500">{plan.billingNote}</div>
                     <div className="mt-5 inline-flex items-center gap-1 text-base font-semibold text-zinc-900">
                       <DiamondIcon className="h-4 w-4" />
-                      <span>{plan.monthlyCredits.toLocaleString()} diamonds / month</span>
+                      <span>{plan.upfrontDiamonds.toLocaleString()} Diamonds upfront</span>
                     </div>
-                    {plan.months > 1 ? (
-                      <div className="mt-2 text-xs text-zinc-500">{plan.totalCredits.toLocaleString()} diamonds across {plan.months} months</div>
-                    ) : null}
                     <button
                       type="button"
                       disabled={planButtonDisabled(plan)}
@@ -213,7 +206,7 @@ export default function DiamondUpsellModal() {
           <section className="space-y-3">
             <div>
               <div className="text-base font-semibold text-zinc-900">Diamond packs</div>
-              <div className="text-sm text-zinc-600">Buy a one-time pack if you only need extra diamonds right now.</div>
+              <div className="text-sm text-zinc-600">Buy a one-time pack if you only need extra Diamonds right now. Diamond packs require an active subscription.</div>
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
               {diamondPacks.map((pack) => {
@@ -227,7 +220,7 @@ export default function DiamondUpsellModal() {
                     <div className="mt-3 text-3xl font-semibold text-zinc-900">{formatUsd(pack.price)}</div>
                     <div className="mt-4 inline-flex items-center gap-1 text-base font-semibold text-zinc-900">
                       <DiamondIcon className="h-4 w-4" />
-                      <span>{pack.diamonds.toLocaleString()} diamonds</span>
+                      <span>{pack.diamonds.toLocaleString()} Diamonds</span>
                     </div>
                     <button
                       type="button"
@@ -266,18 +259,25 @@ export default function DiamondUpsellModal() {
                     <div className="mt-1 text-sm text-zinc-600">
                       Amount:{" "}
                       <span className="font-semibold text-zinc-900">
-                        {formatUsd(selectedItem.type === "pack" ? selectedItem.price : selectedItem.discounted)}
+                        {formatUsd(selectedItem.type === "pack" ? selectedItem.price : selectedItem.billedTotal)}
                       </span>
                     </div>
                     <div className="mt-2 inline-flex items-center gap-1 text-sm text-zinc-600">
                       <DiamondIcon className="h-4 w-4" />
                       <span>
                         {selectedItem.type === "pack"
-                          ? `${selectedItem.diamonds.toLocaleString()} diamonds added instantly`
-                          : `${selectedItem.monthlyCredits.toLocaleString()} credits issued today and monthly thereafter`}
+                          ? `${selectedItem.diamonds.toLocaleString()} Diamonds added instantly`
+                          : `${selectedItem.upfrontDiamonds.toLocaleString()} Diamonds issued upfront after payment`}
                       </span>
                     </div>
                   </div>
+
+                  {selectedItem.type === "pack" ? null : (
+                    <div className="rounded-2xl bg-zinc-50 px-4 py-3 text-xs text-zinc-600">
+                      Subscriptions renew automatically until canceled. You can turn off auto-renew in Account; access
+                      continues through the end of your paid term.
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <div className="text-sm font-semibold text-zinc-900">Payment method</div>
