@@ -208,6 +208,10 @@ export default function Create() {
     () => (Array.isArray(characterCreations) ? characterCreations.find((r) => r.id === draftId) : null),
     [characterCreations, draftId],
   );
+  const isAnime = record?.kind === "anime";
+  const recordAge = record?.appearance?.age;
+  const hasRecordAge = recordAge !== undefined && recordAge !== null && `${recordAge}` !== "";
+  const recordCountry = `${record?.appearance?.country || ""}`.trim();
 
   const myRecords = useMemo(() => {
     const list = Array.isArray(characterCreations) ? characterCreations : [];
@@ -261,6 +265,7 @@ export default function Create() {
   const skipAutoResumeRef = useRef(false);
   const [openGroup, setOpenGroup] = useState("gender");
   const [promptText, setPromptText] = useState("");
+  const [typeModalOpen, setTypeModalOpen] = useState(false);
   const randomizedDraftRef = useRef("");
 
   useEffect(() => {
@@ -290,9 +295,22 @@ export default function Create() {
     setCountry(a.country || "");
     setAge(a.age !== undefined && a.age !== null && `${a.age}` !== "" ? `${a.age}` : "");
     setPersonality(Array.isArray(a.personality) ? a.personality : []);
+    if (
+      record.kind === "anime" &&
+      record.status === "anime-basic" &&
+      !a.name &&
+      !(Array.isArray(a.personality) && a.personality.length) &&
+      randomizedDraftRef.current !== record.id
+    ) {
+      const initialPersonality = [pickRandom(options.personalitySuggestions)];
+      randomizedDraftRef.current = record.id;
+      setPersonality(initialPersonality);
+      updateCharacterCreation(record.id, { appearance: { ...a, personality: initialPersonality } });
+    }
     setCharacterIdea(record.characterIdea || "");
     setTexts(record.texts || { relation: "", scenario: "", firstMessage: "", example: "" });
-    setIsPublic(record.isPublic === undefined ? true : Boolean(record.isPublic));
+    const defaultPublic = record.kind === "anime" ? true : record.isPublic === undefined ? true : Boolean(record.isPublic);
+    setIsPublic(record.isPublicTouched ? Boolean(record.isPublic) : defaultPublic);
     setPromptText(record.portraitPrompt || "");
     setOpenGroup("gender");
   }, [record?.id]);
@@ -305,6 +323,19 @@ export default function Create() {
     if (record.status === "completed") return 2;
     return 1;
   }, [record?.status]);
+  const animeStep = useMemo(() => {
+    if (!record) return 0;
+    if (record.status === "anime-basic") return 1;
+    if (record.status === "anime-portrait") return 2;
+    return 3;
+  }, [record?.status]);
+  const stepTotal = isAnime ? 3 : 2;
+  const stepNumber = isAnime ? animeStep : majorStep;
+  const stepTitle = isAnime
+    ? ["基本信息", "形象确认", "人物设定"][Math.max(0, animeStep - 1)]
+    : majorStep === 1
+      ? "外貌"
+      : "人物设定";
 
   const showToast = (type, message) => {
     setToast({ type, message });
@@ -403,9 +434,13 @@ export default function Create() {
       status:
         majorStep === 2
           ? "description"
-          : gender || record.portraitUrl
-            ? "appearance"
-            : "gender",
+          : isAnime
+            ? record.portraitUrl
+              ? "anime-portrait"
+              : "anime-basic"
+            : gender || record.portraitUrl
+              ? "appearance"
+              : "gender",
     };
     updateCharacterCreation(record.id, patch);
   };
@@ -429,13 +464,19 @@ export default function Create() {
     if (blocker.state === "blocked") blocker.proceed();
   };
 
-  const onStartCreate = () => {
+  const openTypeModal = () => {
     if (!session?.isLoggedIn) {
       openAuth?.({ mode: "login", postAuthPath: "/create" });
       return;
     }
+    setTypeModalOpen(true);
+  };
+
+  const onPickType = (kind) => {
+    setTypeModalOpen(false);
+    if (pendingDraft?.id) deleteCharacterCreation(pendingDraft.id);
     skipAutoResumeRef.current = false;
-    const res = startCharacterCreation({});
+    const res = startCharacterCreation({ kind });
     if (!res?.ok) return;
     setSearchParams({ draft: res.id });
   };
@@ -448,18 +489,6 @@ export default function Create() {
     if (!pendingDraft?.id) return;
     skipAutoResumeRef.current = false;
     setSearchParams({ draft: pendingDraft.id });
-  };
-
-  const onRestartCreate = () => {
-    if (!session?.isLoggedIn) {
-      openAuth?.({ mode: "login", postAuthPath: "/create" });
-      return;
-    }
-    if (pendingDraft?.id) deleteCharacterCreation(pendingDraft.id);
-    skipAutoResumeRef.current = false;
-    const res = startCharacterCreation({});
-    if (!res?.ok) return;
-    setSearchParams({ draft: res.id });
   };
 
   const onGeneratePortrait = ({ isRegenerate }) => {
@@ -500,6 +529,50 @@ export default function Create() {
     updateCharacterCreation(record.id, { portraitUrl: url, portraitPrompt: promptText });
   };
 
+  const onGenerateAnimePortrait = ({ isRegenerate }) => {
+    if (!record) return;
+    if (!name.trim()) {
+      showToast("error", "请先填写姓名");
+      return;
+    }
+    if (!promptText.trim()) {
+      showToast("error", "请填写形象提示词");
+      return;
+    }
+    const portraitCost = 2;
+    const shouldCharge = isRegenerate || !hasFreeCreation;
+    if (shouldCharge) {
+      const ok = spendDiamonds(portraitCost);
+      if (!ok) {
+        openDiamondUpsell({
+          title: "Not enough Diamonds",
+          description: isRegenerate
+            ? "Regenerate the anime portrait by subscribing or buying a diamond pack in this modal."
+            : "Generate images for this anime character by subscribing or buying a diamond pack in this modal.",
+          cost: portraitCost,
+          source: isRegenerate ? "create-anime-portrait-regenerate" : "create-anime-portrait-generate",
+        });
+        return;
+      }
+    }
+    const url = imageUrl(`anime style illustration, ${promptText.trim()}, expressive eyes, clean vibrant background, polished modern character art, high quality, no text, no watermark`);
+    updateCharacterCreation(record.id, { portraitUrl: url, portraitPrompt: promptText, appearance: buildAppearancePayload() });
+    showToast("success", isRegenerate ? "已重新生成形象" : "形象已生成");
+  };
+
+  const onToAnimePortraitStep = () => {
+    if (!record) return;
+    if (!name.trim()) {
+      showToast("error", "请先填写姓名");
+      return;
+    }
+    if (!personality.length) {
+      showToast("error", "请至少选择一个性格");
+      return;
+    }
+    updateCharacterCreation(record.id, { appearance: buildAppearancePayload(), status: "anime-portrait" });
+  };
+
   const onToPortraitStep = () => {
     if (!record) return;
     if (!name.trim()) {
@@ -538,6 +611,10 @@ export default function Create() {
   const onGenerateCharacterTexts = () => {
     if (!record) return;
     const idea = characterIdea.trim();
+    if (isAnime && !idea) {
+      showToast("error", "请先填写你希望这个人是什么样的");
+      return;
+    }
     const nextTexts = generateTexts({ name, country, personality }, idea);
     setCharacterIdea(idea);
     setTexts(nextTexts);
@@ -580,7 +657,7 @@ export default function Create() {
                 <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                   <button
                     type="button"
-                    onClick={pendingDraft ? onRestartCreate : onStartCreate}
+                    onClick={openTypeModal}
                     className="inline-flex min-w-[180px] items-center justify-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-sm font-semibold text-zinc-950 hover:bg-zinc-100"
                   >
                     <Sparkles className="h-4 w-4" />
@@ -612,7 +689,7 @@ export default function Create() {
               <div className="min-w-0">
                 <div className="text-lg font-semibold text-zinc-900">检测到未完成的草稿</div>
                 <div className="mt-1 text-sm text-zinc-600">
-                  你可以继续上次的草稿，或重新创建（将放弃当前草稿，从选择性别开始）。
+                  你可以继续上次的草稿，或重新创建（将放弃当前草稿，从选择人物类型开始）。
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -625,7 +702,7 @@ export default function Create() {
                 </button>
                 <button
                   type="button"
-                  onClick={onRestartCreate}
+                  onClick={openTypeModal}
                   className="inline-flex items-center justify-center rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
                 >
                   重新创建
@@ -664,8 +741,9 @@ export default function Create() {
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold text-zinc-900">{r.appearance?.name || "未命名人物"}</div>
                         <div className="mt-0.5 truncate text-xs text-zinc-500">
-                          {r.appearance?.country || "未设置国家"}
-                          {r.appearance?.gender ? ` · ${r.appearance.gender === "Male" ? "男" : "女"}` : ""}
+                          {r.kind === "anime"
+                            ? "动漫"
+                            : `${r.appearance?.country || "未设置国家"}${r.appearance?.gender ? ` · ${r.appearance.gender === "Male" ? "男" : "女"}` : ""}`}
                         </div>
                       </div>
                       <ChevronRight className="h-4 w-4 shrink-0 text-zinc-400" />
@@ -676,6 +754,33 @@ export default function Create() {
             </div>
           </div>
         ) : null}
+
+        <Modal open={typeModalOpen} onClose={() => setTypeModalOpen(false)} title="选择人物类型" className="max-w-2xl">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => onPickType("human")}
+              className="group rounded-3xl border border-zinc-200 bg-white p-5 text-left transition hover:-translate-y-0.5 hover:shadow-lg"
+            >
+              <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-zinc-900 text-white">
+                <ImageIcon className="h-5 w-5" />
+              </div>
+              <div className="mt-3 text-base font-semibold text-zinc-900">人类</div>
+              <div className="mt-1 text-sm leading-6 text-zinc-600">外貌设定 → 形象图 → 人物设定，创建真人风格人物。</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => onPickType("anime")}
+              className="group rounded-3xl border border-zinc-200 bg-white p-5 text-left transition hover:-translate-y-0.5 hover:shadow-lg"
+            >
+              <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-fuchsia-600 text-white">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div className="mt-3 text-base font-semibold text-zinc-900">动漫人</div>
+              <div className="mt-1 text-sm leading-6 text-zinc-600">基本信息 → 提示词生图 → 人物设定，创建动漫风格人物。</div>
+            </button>
+          </div>
+        </Modal>
 
         {toast ? (
           <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-2xl border border-white/10 bg-zinc-900/90 px-4 py-3 text-sm font-semibold text-white shadow-2xl backdrop-blur">
@@ -724,20 +829,231 @@ export default function Create() {
           <div>
             <div className="text-xl font-semibold text-zinc-900">创建人物</div>
             <div className="mt-1 text-sm text-zinc-500">
-              Step {majorStep}/2 · {majorStep === 1 ? "外貌" : "人物设定"}
+              Step {stepNumber}/{stepTotal} · {stepTitle}
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className={cn("inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold", majorStep >= 1 ? "bg-zinc-900 text-white" : "border border-zinc-200 bg-white text-zinc-500")}>
-              <ImageIcon className="h-3.5 w-3.5" />
-              外貌
-            </div>
-            <div className={cn("inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold", majorStep >= 2 ? "bg-zinc-900 text-white" : "border border-zinc-200 bg-white text-zinc-500")}>
-              <Sparkles className="h-3.5 w-3.5" />
-              人物设定
-            </div>
+            {isAnime ? (
+              <>
+                <div className={cn("inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold", animeStep >= 1 ? "bg-zinc-900 text-white" : "border border-zinc-200 bg-white text-zinc-500")}>
+                  <Check className="h-3.5 w-3.5" />
+                  基本信息
+                </div>
+                <div className={cn("inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold", animeStep >= 2 ? "bg-zinc-900 text-white" : "border border-zinc-200 bg-white text-zinc-500")}>
+                  <ImageIcon className="h-3.5 w-3.5" />
+                  形象确认
+                </div>
+                <div className={cn("inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold", animeStep >= 3 ? "bg-zinc-900 text-white" : "border border-zinc-200 bg-white text-zinc-500")}>
+                  <Sparkles className="h-3.5 w-3.5" />
+                  人物设定
+                </div>
+              </>
+            ) : (
+              <>
+                <div className={cn("inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold", majorStep >= 1 ? "bg-zinc-900 text-white" : "border border-zinc-200 bg-white text-zinc-500")}>
+                  <ImageIcon className="h-3.5 w-3.5" />
+                  外貌
+                </div>
+                <div className={cn("inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold", majorStep >= 2 ? "bg-zinc-900 text-white" : "border border-zinc-200 bg-white text-zinc-500")}>
+                  <Sparkles className="h-3.5 w-3.5" />
+                  人物设定
+                </div>
+              </>
+            )}
           </div>
         </div>
+
+        {isAnime && record.status === "anime-basic" ? (
+          <div className="mt-6">
+            <div className="mx-auto max-w-2xl rounded-[26px] border border-zinc-200 bg-white p-5 sm:p-6">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold text-zinc-900">基本信息</div>
+              </div>
+
+              <div className="mt-4 space-y-5">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">姓名（必填）</div>
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="输入动漫人物姓名"
+                    maxLength={50}
+                    className="mt-2 h-10 w-full rounded-2xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-zinc-900"
+                  />
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {["Aki", "Hana", "Ren", "Mio", "Yuki"].map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setName(n)}
+                        className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50"
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">性格（最多 3 个）</div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {personality.map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setPersonality(personality.filter((x) => x !== p))}
+                        className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-zinc-700"
+                        aria-label={`删除性格 ${p}`}
+                      >
+                        {p}
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {visiblePersonalityOptions.map((p) => {
+                      const selected = personality.includes(p);
+                      const disabled = !selected && personality.length >= 3;
+                      return (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => {
+                            if (selected) setPersonality(personality.filter((x) => x !== p));
+                            else if (personality.length < 3) setPersonality([...personality, p]);
+                          }}
+                          disabled={disabled}
+                          className={cn(
+                            "rounded-full px-3 py-1.5 text-sm font-semibold",
+                            selected ? "bg-zinc-900 text-white" : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50",
+                            disabled ? "opacity-40" : "",
+                          )}
+                        >
+                          {p}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPersonalityPage((v) => (v + 1) % personalityPageCount)}
+                    className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-zinc-800 hover:shadow-md"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    换一换
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={onToAnimePortraitStep}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white hover:bg-zinc-800"
+                >
+                  下一步
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {isAnime && record.status === "anime-portrait" ? (
+          <div className="mx-auto mt-6 grid max-w-5xl grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="flex flex-col rounded-[26px] border border-zinc-200 bg-white p-5">
+              <div className="text-sm font-semibold text-zinc-900">形象确认</div>
+              <div className="mt-1 text-xs leading-5 text-zinc-500">填写提示词生成动漫形象，满意后进入下一步。</div>
+
+              <div className="mt-4 flex flex-1 flex-col">
+                  <textarea
+                    value={promptText}
+                    onChange={(e) => setPromptText(e.target.value)}
+                    placeholder="描述你想要的动漫形象，例如：silver-blue hair, light jacket, soft sci-fi atmosphere"
+                    maxLength={500}
+                    className="h-[38vh] max-h-[380px] min-h-[200px] w-full resize-none rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm leading-6 text-zinc-900 outline-none focus:border-zinc-900"
+                  />
+                  <div className="mt-2 flex items-center justify-end text-xs tabular-nums text-zinc-400">{promptText.length}/500</div>
+                  <div className="mt-2 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => updateCharacterCreation(record.id, { appearance: buildAppearancePayload(), status: "anime-basic" })}
+                      className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      上一步
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onGenerateAnimePortrait({ isRegenerate: Boolean(record.portraitUrl) })}
+                      disabled={!promptText.trim()}
+                      className={cn(
+                        "inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold",
+                        promptText.trim() ? "bg-zinc-900 text-white hover:bg-zinc-800" : "bg-zinc-200 text-zinc-500",
+                      )}
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      {record.portraitUrl ? (
+                        <span className="inline-flex items-center gap-2">
+                          重新生成图片
+                          <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold text-white">
+                            <DiamondIcon className="h-3.5 w-3.5 text-sky-200" />
+                            <span>2</span>
+                          </span>
+                        </span>
+                      ) : hasFreeCreation ? (
+                        "首次生成免费"
+                      ) : (
+                        <span className="inline-flex items-center gap-2">
+                          生成图片
+                          <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold text-white">
+                            <DiamondIcon className="h-3.5 w-3.5 text-sky-200" />
+                            <span>2</span>
+                          </span>
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                  <div className="mt-2 text-xs text-zinc-500">首次创建人物生图免费；后续人物生图和重新生成均消耗 2 钻石。</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col rounded-[26px] border border-zinc-200 bg-white p-5">
+              <div className="text-sm font-semibold text-zinc-900">形象展示</div>
+              <div className="mt-1 whitespace-nowrap text-xs leading-5 text-zinc-500">满意后进入下一步，不满意可重新生成。</div>
+              <div className="mx-auto mt-4 aspect-[9/16] h-[46vh] max-h-[440px] w-full overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-100">
+                {record.portraitUrl ? (
+                  <img
+                    src={record.portraitUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = recordFallbackUrl;
+                    }}
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center">
+                    <div className="text-sm font-semibold text-zinc-500">点击“生成图片”后展示</div>
+                  </div>
+                )}
+              </div>
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={onToDescriptionStep}
+                  disabled={!record.portraitUrl}
+                  className={cn(
+                    "inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold",
+                    record.portraitUrl ? "bg-emerald-600 text-white hover:bg-emerald-500" : "bg-zinc-200 text-zinc-500",
+                  )}
+                >
+                  下一步
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {record.status === "gender" || record.status === "appearance" ? (
           <div className="mt-6">
@@ -1176,18 +1492,25 @@ export default function Create() {
                   className="min-h-[230px] w-full flex-1 resize-none rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm leading-6 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-900"
                 />
                 <div className="mt-2 flex items-center justify-end text-xs tabular-nums text-zinc-400">{characterIdea.length}/500</div>
+                {isAnime && !characterIdea.trim() ? (
+                  <div className="mt-1 text-xs text-zinc-500">动漫人物需先填写设定描述，才能生成人物设定。</div>
+                ) : null}
                 <div className="mt-2 flex items-center gap-2">
                   <button
                     type="button"
                     onClick={onGenerateCharacterTexts}
-                    className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-5 text-sm font-semibold text-white transition hover:bg-zinc-800"
+                    disabled={isAnime && !characterIdea.trim()}
+                    className={cn(
+                      "inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold transition",
+                      isAnime && !characterIdea.trim() ? "bg-zinc-200 text-zinc-500" : "bg-zinc-900 text-white hover:bg-zinc-800",
+                    )}
                   >
                     <RefreshCw className="h-4 w-4" />
                     {texts.relation ? "重新生成" : "生成"}
                   </button>
                   <button
                     type="button"
-                    onClick={() => updateCharacterCreation(record.id, { characterIdea, texts, status: "portrait" })}
+                    onClick={() => updateCharacterCreation(record.id, { characterIdea, texts, status: isAnime ? "anime-portrait" : "portrait" })}
                     className="inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -1216,7 +1539,15 @@ export default function Create() {
             <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-zinc-100 pt-4">
               <label className="flex h-10 items-center gap-2.5 rounded-2xl border border-zinc-200 bg-zinc-50 px-3.5">
                 <span className="text-sm font-semibold text-zinc-700">公开人物</span>
-                <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} className="sr-only" />
+                <input
+                  type="checkbox"
+                  checked={isPublic}
+                  onChange={(e) => {
+                    setIsPublic(e.target.checked);
+                    updateCharacterCreation(record.id, { isPublic: e.target.checked, isPublicTouched: true });
+                  }}
+                  className="sr-only"
+                />
                 <span className={cn("relative inline-flex h-6 w-11 items-center rounded-full transition-colors", isPublic ? "bg-emerald-600" : "bg-zinc-300")}>
                   <span className={cn("absolute left-1 h-4 w-4 rounded-full bg-white shadow transition-transform", isPublic ? "translate-x-5" : "translate-x-0")} />
                 </span>
@@ -1262,20 +1593,22 @@ export default function Create() {
                 </div>
                 <div className="mt-3 text-2xl font-semibold text-zinc-900">{record.appearance?.name || "未命名人物"}</div>
 
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl border border-zinc-200 bg-zinc-50/60 px-4 py-3">
-                    <div className="text-xs text-zinc-500">年龄</div>
-                    <div className="mt-1 text-sm font-semibold text-zinc-900">
-                      {record.appearance?.age !== undefined && record.appearance?.age !== null && `${record.appearance?.age}` !== ""
-                        ? `${record.appearance.age} 岁`
-                        : "未设置"}
-                    </div>
+                {hasRecordAge || recordCountry ? (
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    {hasRecordAge ? (
+                      <div className="rounded-2xl border border-zinc-200 bg-zinc-50/60 px-4 py-3">
+                        <div className="text-xs text-zinc-500">年龄</div>
+                        <div className="mt-1 text-sm font-semibold text-zinc-900">{recordAge} 岁</div>
+                      </div>
+                    ) : null}
+                    {recordCountry ? (
+                      <div className="rounded-2xl border border-zinc-200 bg-zinc-50/60 px-4 py-3">
+                        <div className="text-xs text-zinc-500">国家/地区</div>
+                        <div className="mt-1 text-sm font-semibold text-zinc-900">{recordCountry}</div>
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="rounded-2xl border border-zinc-200 bg-zinc-50/60 px-4 py-3">
-                    <div className="text-xs text-zinc-500">国家/地区</div>
-                    <div className="mt-1 text-sm font-semibold text-zinc-900">{record.appearance?.country || "未设置"}</div>
-                  </div>
-                </div>
+                ) : null}
 
                 <div className="mt-3 rounded-2xl border border-zinc-200 bg-zinc-50/60 px-4 py-3">
                   <div className="text-xs text-zinc-500">性格</div>

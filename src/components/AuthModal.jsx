@@ -23,6 +23,8 @@ export default function AuthModal() {
   const setAuthMode = useUIStore((s) => s.setAuthMode);
   const closeAuth = useUIStore((s) => s.closeAuth);
   const consumePostAuthPath = useUIStore((s) => s.consumePostAuthPath);
+  const consumePostAuthShare = useUIStore((s) => s.consumePostAuthShare);
+  const openShare = useUIStore((s) => s.openShare);
 
   const [assetVersion, setAssetVersion] = useState(() => Date.now().toString());
   const [email, setEmail] = useState("");
@@ -82,7 +84,9 @@ export default function AuthModal() {
     setLoading(false);
     closeAuth();
     const next = consumePostAuthPath();
+    const pendingShare = consumePostAuthShare();
     if (next) navigate(next, { replace: true });
+    if (pendingShare) openShare(pendingShare);
   };
 
   const requestLogin = async (identity) => {

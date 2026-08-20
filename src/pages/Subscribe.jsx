@@ -27,7 +27,7 @@ export default function Subscribe() {
       },
       {
         q: "How are Diamonds issued?",
-        a: "Get 100 Diamonds on Monthly, 300 on Quarterly, or 1,200 on Annual. Diamonds are issued upfront after each successful payment.",
+        a: "All paid plans include 100 Diamonds per month. 100 Diamonds are issued immediately after each successful payment, and 100 Diamonds are issued at the start of each subsequent billing month.",
       },
       {
         q: "How does renewal work?",
@@ -149,7 +149,7 @@ export default function Subscribe() {
       <div className="space-y-1">
         <div className="text-base font-semibold text-zinc-900">Choose your subscription</div>
         <div className="text-sm text-zinc-600">
-          Get 100 Diamonds on Monthly, 300 on Quarterly, or 1,200 on Annual. Diamonds are issued upfront after each successful payment.
+          All paid plans include 100 Diamonds per month. 100 Diamonds are issued immediately after each successful payment, and 100 Diamonds are issued at the start of each subsequent billing month.
         </div>
       </div>
 
@@ -211,7 +211,7 @@ export default function Subscribe() {
             <div className="mt-6 space-y-3 text-sm text-zinc-700">
               <div className="inline-flex items-center gap-1 font-semibold text-zinc-900">
                 <DiamondIcon className="h-4 w-4" />
-                <span>{p.upfrontDiamonds.toLocaleString()} Diamonds upfront</span>
+                <span>100 Diamonds/month</span>
               </div>
               <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
                 <div className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Includes</div>
@@ -317,7 +317,7 @@ export default function Subscribe() {
               <span>
                 {confirmItem?.type === "pack"
                   ? `${confirmItem?.diamonds?.toLocaleString?.() || 0} Diamonds added instantly`
-                  : `${confirmItem?.upfrontDiamonds?.toLocaleString?.() || 0} Diamonds issued upfront after payment`}
+                  : `100 Diamonds issued immediately, then 100 Diamonds/month`}
               </span>
             </div>
           </div>

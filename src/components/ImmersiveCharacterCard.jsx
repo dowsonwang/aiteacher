@@ -13,6 +13,7 @@ export default function ImmersiveCharacterCard({ character, onStartChat }) {
   const videoSrc = useMemo(() => `/videos/characters/hover.mp4?v=${assetVersion}`, [assetVersion]);
   const videoRef = useRef(null);
   const [hasVideo, setHasVideo] = useState(true);
+  const showAge = Boolean(character.age);
 
   useEffect(() => {
     setSrc(primarySrc);
@@ -73,7 +74,7 @@ export default function ImmersiveCharacterCard({ character, onStartChat }) {
       <div className="absolute inset-x-0 bottom-0 px-3 pb-3 pt-10">
         <div className="flex items-baseline justify-between gap-3">
           <div className="truncate text-sm font-semibold text-white">{character.name}</div>
-          <div className="text-[11px] text-white/75">{character.age ? `${character.age}` : ""}</div>
+          <div className="text-[11px] text-white/75">{showAge ? `${character.age}` : ""}</div>
         </div>
         <div className="mt-1 line-clamp-1 text-[11px] text-white/80">{character.bio}</div>
       </div>

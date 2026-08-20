@@ -54,9 +54,8 @@ const splitMixedReply = (raw) => {
   return out;
 };
 
-const pickProfileBlocks = (characterId) => {
-  const idx = Math.max(1, Number(`${characterId}`.replace(/\D/g, "")) || 1);
-  const countries = ["USA", "Japan", "Korea", "France", "Canada", "Germany", "UK"];
+const pickProfileBlocks = (character) => {
+  const idx = Math.max(1, Number(`${character?.id || ""}`.replace(/\D/g, "")) || 1);
   const personalities = ["Patient", "Clear", "Encouraging", "Direct", "Structured", "Playful"];
   const personalityTagsByIdx = [
     ["Warm", "Supportive", "Playful"],
@@ -68,10 +67,13 @@ const pickProfileBlocks = (characterId) => {
   const personality = personalities[idx % personalities.length];
   const personalityTags = personalityTagsByIdx[idx % personalityTagsByIdx.length];
 
-  return [
-    { key: "country", label: "Country", value: countries[idx % countries.length], Icon: Flag },
-    { key: "personality", label: "Personality", value: personality, tags: personalityTags, Icon: Sparkles },
-  ];
+  const blocks = [];
+  const country = `${character?.country || character?.profile?.country || ""}`.trim();
+  if (country) {
+    blocks.push({ key: "country", label: "Country", value: country, Icon: Flag });
+  }
+  blocks.push({ key: "personality", label: "Personality", value: personality, tags: personalityTags, Icon: Sparkles });
+  return blocks;
 };
 
 export default function ChatRoom() {
@@ -137,6 +139,7 @@ export default function ChatRoom() {
   const [mediaItem, setMediaItem] = useState(null);
   const messagesRef = useRef(null);
   const requestButtonsRef = useRef(null);
+  const pendingMessageRef = useRef(null);
   const hasOpenedTourRef = useRef(false);
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
@@ -155,6 +158,11 @@ export default function ChatRoom() {
     if (!conversation) return;
     const clean = `${text ?? input}`.trim();
     if (!clean && !attachments.length) return;
+    if (!session.isLoggedIn) {
+      pendingMessageRef.current = { text: clean, attachments };
+      openAuth({ mode: "login", postAuthPath: `/chat/${conversation.id}` });
+      return;
+    }
     setInput("");
     sendMessage({ conversationId: conversation.id, text: clean, attachments });
     setTyping(true);
@@ -168,6 +176,10 @@ export default function ChatRoom() {
 
   const requestMedia = async (kind) => {
     if (!conversation) return;
+    if (!session.isLoggedIn) {
+      openAuth({ mode: "login", postAuthPath: `/chat/${conversation.id}` });
+      return;
+    }
     const cost = kind === "video" ? requestVideoCost : requestImageCost;
     const beforeFreeLeft = quota.freeLeft;
     const result = consumeMediaRequest({ freeLimit: freeMediaLimit, cost });
@@ -221,7 +233,7 @@ export default function ChatRoom() {
     </Modal>
   );
 
-  const panelBlocks = useMemo(() => (character ? pickProfileBlocks(character.id) : []), [character?.id]);
+  const panelBlocks = useMemo(() => (character ? pickProfileBlocks(character) : []), [character]);
   const isFavorited = useMemo(
     () => (Array.isArray(favoriteCharacters) ? favoriteCharacters.includes(character?.id) : false),
     [character?.id, favoriteCharacters],
@@ -244,42 +256,44 @@ export default function ChatRoom() {
   }, [character, profileFallbackSrc]);
 
   useEffect(() => {
-    if (!conversation || !session.isLoggedIn) return;
+    if (!conversation) return;
     const el = messagesRef.current;
     if (!el) return;
     const raf = window.requestAnimationFrame(() => {
       el.scrollTop = el.scrollHeight;
     });
     return () => window.cancelAnimationFrame(raf);
-  }, [conversation, session.isLoggedIn, typing]);
+  }, [conversation, typing]);
 
   useEffect(() => {
-    if (!conversation || !character || !session.isLoggedIn) return;
+    if (!conversation || !character) return;
     if (hasOpenedTourRef.current) return;
     const canShow = typeof window !== "undefined" && window.matchMedia?.("(min-width: 1024px)")?.matches;
     if (!canShow) return;
     hasOpenedTourRef.current = true;
     const raf = window.requestAnimationFrame(() => setTourOpen(true));
     return () => window.cancelAnimationFrame(raf);
-  }, [character, conversation, session.isLoggedIn]);
+  }, [character, conversation]);
+
+  useEffect(() => {
+    if (!session.isLoggedIn || !conversation) return;
+    const pending = pendingMessageRef.current;
+    if (!pending) return;
+    pendingMessageRef.current = null;
+    setInput("");
+    sendMessage({ conversationId: conversation.id, text: pending.text, attachments: pending.attachments });
+    setTyping(true);
+    window.setTimeout(() => {
+      replyAsAssistant({
+        conversationId: conversation.id,
+        text: buildAssistantReply({ characterName: character?.name || "Them", userText: pending.text }),
+      });
+      setTyping(false);
+    }, 550);
+  }, [session.isLoggedIn, conversation, character, sendMessage, replyAsAssistant]);
 
   if (!conversation || !character) {
     return <div className="flex h-full items-center justify-center text-sm text-zinc-500">{t(language, "chat_not_found")}</div>;
-  }
-
-  if (!session.isLoggedIn) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 px-6">
-        <div className="text-sm text-zinc-600">{t(language, "chat_need_login")}</div>
-        <button
-          type="button"
-          onClick={() => openAuth({ mode: "login", postAuthPath: `/chat/${conversation.id}` })}
-          className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
-        >
-          {t(language, "top_login")}
-        </button>
-      </div>
-    );
   }
 
   return (
@@ -536,7 +550,6 @@ export default function ChatRoom() {
                 {requestVideoCost}
               </span>
             </button>
-            <div className="ml-auto text-[11px] font-medium text-emerald-700">Text chat is always free</div>
           </div>
 
           <div className="mt-3 flex items-center gap-2">
@@ -610,7 +623,13 @@ export default function ChatRoom() {
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => toggleFavoriteCharacter(character.id)}
+                      onClick={() => {
+                        if (!session.isLoggedIn) {
+                          openAuth({ mode: "login", postAuthPath: `/chat/${conversation.id}` });
+                          return;
+                        }
+                        toggleFavoriteCharacter(character.id);
+                      }}
                       className={cn(
                         "inline-flex items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-sm font-semibold",
                         isFavorited ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50",
@@ -621,7 +640,13 @@ export default function ChatRoom() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => openShare({ url: shareUrl, title: "分享" })}
+                      onClick={() => {
+                        if (!session.isLoggedIn) {
+                          openAuth({ mode: "login", postAuthPath: `/chat/${conversation.id}`, postAuthShare: { url: shareUrl, title: "分享" } });
+                          return;
+                        }
+                        openShare({ url: shareUrl, title: "分享" });
+                      }}
                       className="inline-flex items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
                     >
                       <Share2 className="h-4 w-4" />
@@ -632,7 +657,9 @@ export default function ChatRoom() {
                   <div className="mt-4 flex items-start gap-3">
                     <div className="min-w-0">
                       <div className="truncate text-sm font-semibold text-zinc-900">{character.name}</div>
-                      <div className="mt-0.5 text-xs text-zinc-500">{character.age} years</div>
+                      {character.age ? (
+                        <div className="mt-0.5 text-xs text-zinc-500">{character.age} years</div>
+                      ) : null}
                     </div>
                   </div>
 

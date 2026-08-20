@@ -65,8 +65,10 @@ export default function ShortStoryDetail() {
   const drama = useMemo(() => shortDramas.find((item) => item.id === id) || shortDramas[0], [id]);
   const baseNodes = useMemo(() => shortStoryBranches[drama.id] || fallbackNodes(drama), [drama]);
   const accountKey = useAppStore((state) => state.session?.accountKey);
+  const isLoggedIn = useAppStore((state) => Boolean(state.session?.isLoggedIn));
   const continuationJobs = useAppStore((state) => state.shortContinuationJobs);
   const createShortContinuation = useAppStore((state) => state.createShortContinuation);
+  const openAuth = useUIStore((state) => state.openAuth);
   const openDiamondUpsell = useUIStore((state) => state.openDiamondUpsell);
   const favoriteShorts = useAppStore((state) => state.favoriteShorts);
   const likedShorts = useAppStore((state) => state.likedShorts);
@@ -428,6 +430,10 @@ export default function ShortStoryDetail() {
   };
 
   const submitCreate = () => {
+    if (!isLoggedIn) {
+      openAuth({ mode: "login", postAuthPath: `/shorts/${drama.id}` });
+      return;
+    }
     const result = createShortContinuation({
       dramaId: drama.id,
       parentNodeId: createParentNodeId,
@@ -656,7 +662,13 @@ export default function ShortStoryDetail() {
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => toggleFavoriteShort(drama.id)}
+                  onClick={() => {
+                    if (!isLoggedIn) {
+                      openAuth({ mode: "login", postAuthPath: `/shorts/${drama.id}` });
+                      return;
+                    }
+                    toggleFavoriteShort(drama.id);
+                  }}
                   className={cn(
                     "inline-flex items-center gap-1.5 px-1 py-1 text-sm font-semibold transition",
                     saved ? "text-zinc-950" : "text-zinc-500 hover:text-zinc-800",
@@ -667,7 +679,13 @@ export default function ShortStoryDetail() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => toggleLikeShort(drama.id)}
+                  onClick={() => {
+                    if (!isLoggedIn) {
+                      openAuth({ mode: "login", postAuthPath: `/shorts/${drama.id}` });
+                      return;
+                    }
+                    toggleLikeShort(drama.id);
+                  }}
                   className={cn(
                     "inline-flex items-center gap-1.5 px-1 py-1 text-sm font-semibold transition",
                     liked ? "text-rose-600" : "text-zinc-500 hover:text-zinc-800",

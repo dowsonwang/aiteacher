@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ChevronDown, CreditCard, LogOut, Settings, UserRound } from "lucide-react";
+import { characterCategoryTabs, getCharacterCategoryFromPath } from "../lib/characterCategories.js";
 import { cn } from "../lib/utils.js";
 import { languageOptions, t } from "../i18n/i18n.js";
 import { useAppStore } from "../stores/useAppStore.js";
@@ -22,6 +23,8 @@ const cartoonAvatarUrl = (name) =>
 
 export default function TopBar() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const activeCategory = getCharacterCategoryFromPath(location.pathname);
   const language = useAppStore((s) => s.language);
   const session = useAppStore((s) => s.session);
   const subscription = useAppStore((s) => s.subscription);
@@ -177,24 +180,49 @@ export default function TopBar() {
   );
 
   return (
-    <div className="flex h-14 items-center justify-end gap-2 border-b border-zinc-200 bg-white px-6">
-        {session.isLoggedIn && diamondRewardNotice?.visible ? (
-          <div className="pointer-events-none fixed right-6 top-16 z-[85]">
-            <div className="rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm shadow-xl">
-              <div className="font-semibold text-zinc-900">Daily login reward</div>
-              <div className="mt-1 text-zinc-600">
-                Today&apos;s login grants you{" "}
-                <span className="inline-flex items-center gap-1 font-semibold text-zinc-900">
-                  <DiamondIcon className="h-4 w-4 text-sky-500" />
-                  <span>{diamondRewardNotice.amount}</span>
-                </span>
-                .
-              </div>
-            </div>
+    <div className="flex h-14 items-center justify-between gap-4 border-b border-zinc-200 bg-white px-6">
+      <div className="no-scrollbar flex min-w-0 flex-1 items-center overflow-x-auto">
+        {activeCategory ? (
+          <div id="home-category-tabs" className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-zinc-200 bg-zinc-50 p-1">
+            {characterCategoryTabs.map((tab) => {
+              const isActive = tab.key === activeCategory;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => {
+                    if (!isActive) navigate(tab.path);
+                  }}
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-sm font-semibold transition",
+                    isActive ? "bg-zinc-900 text-white" : "text-zinc-600 hover:bg-white hover:text-zinc-900",
+                  )}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
         ) : null}
+      </div>
 
-      <div ref={menuWrapRef} className="flex items-center gap-2">
+      {session.isLoggedIn && diamondRewardNotice?.visible ? (
+        <div className="pointer-events-none fixed right-6 top-16 z-[85]">
+          <div className="rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm shadow-xl">
+            <div className="font-semibold text-zinc-900">Daily login reward</div>
+            <div className="mt-1 text-zinc-600">
+              Today&apos;s login grants you{" "}
+              <span className="inline-flex items-center gap-1 font-semibold text-zinc-900">
+                <DiamondIcon className="h-4 w-4 text-sky-500" />
+                <span>{diamondRewardNotice.amount}</span>
+              </span>
+              .
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <div ref={menuWrapRef} className="flex flex-shrink-0 items-center gap-2">
         <button
           type="button"
           onClick={openLanguage}

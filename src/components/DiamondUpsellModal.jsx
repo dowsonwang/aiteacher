@@ -183,7 +183,7 @@ export default function DiamondUpsellModal() {
                     <div className="mt-2 text-xs text-zinc-500">{plan.billingNote}</div>
                     <div className="mt-5 inline-flex items-center gap-1 text-base font-semibold text-zinc-900">
                       <DiamondIcon className="h-4 w-4" />
-                      <span>{plan.upfrontDiamonds.toLocaleString()} Diamonds upfront</span>
+                      <span>100 Diamonds/month</span>
                     </div>
                     <button
                       type="button"
@@ -267,7 +267,7 @@ export default function DiamondUpsellModal() {
                       <span>
                         {selectedItem.type === "pack"
                           ? `${selectedItem.diamonds.toLocaleString()} Diamonds added instantly`
-                          : `${selectedItem.upfrontDiamonds.toLocaleString()} Diamonds issued upfront after payment`}
+                          : `100 Diamonds issued immediately, then 100 Diamonds/month`}
                       </span>
                     </div>
                   </div>

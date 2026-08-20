@@ -62,10 +62,6 @@ export default function Favorites() {
 
   const onStartChat = (characterId) => {
     const conversationId = openConversationForCharacter(characterId);
-    if (!session.isLoggedIn) {
-      openAuth({ mode: "login", postAuthPath: `/chat/${conversationId}` });
-      return;
-    }
     navigate(`/chat/${conversationId}`);
   };
 

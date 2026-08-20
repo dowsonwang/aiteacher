@@ -28,6 +28,9 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/browse" replace /> },
       { path: "browse", element: <BrowseHome /> },
+      { path: "girls", element: <BrowseHome /> },
+      { path: "boys", element: <BrowseHome /> },
+      { path: "anime", element: <BrowseHome /> },
       { path: "feed", element: <Feed /> },
       { path: "shorts", element: <Shorts /> },
       { path: "shorts/:id/about", element: <ShortStoryOverview /> },

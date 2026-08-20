@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 import {
   ChevronLeft,
@@ -32,13 +32,23 @@ const navItems = [
 
 export default function Sidebar() {
   const language = useAppStore((s) => s.language);
+  const session = useAppStore((s) => s.session);
   const grantDailyShareReward = useAppStore((s) => s.grantDailyShareReward);
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
+  const openAuth = useUIStore((s) => s.openAuth);
 
   const [freeDiamondOpen, setFreeDiamondOpen] = useState(false);
   const [shareHint, setShareHint] = useState("");
   const [discordHint, setDiscordHint] = useState("");
+  const pendingFreeDiamondRef = useRef(false);
+
+  useEffect(() => {
+    if (!session.isLoggedIn) return;
+    if (!pendingFreeDiamondRef.current) return;
+    pendingFreeDiamondRef.current = false;
+    setFreeDiamondOpen(true);
+  }, [session.isLoggedIn]);
 
   const socialLinks = useMemo(
     () => [
@@ -119,7 +129,14 @@ export default function Sidebar() {
       <div className={cn("mt-auto bg-white pt-4", sidebarCollapsed ? "px-1" : "px-0")}>
         <button
           type="button"
-          onClick={() => setFreeDiamondOpen(true)}
+          onClick={() => {
+            if (!session.isLoggedIn) {
+              pendingFreeDiamondRef.current = true;
+              openAuth({ mode: "login" });
+              return;
+            }
+            setFreeDiamondOpen(true);
+          }}
           className={cn(
             "rounded-xl bg-zinc-900 text-sm font-medium text-white hover:bg-zinc-800",
             sidebarCollapsed ? "mx-auto flex h-9 w-9 items-center justify-center" : "w-full px-3 py-2",

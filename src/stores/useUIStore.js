@@ -4,6 +4,7 @@ export const useUIStore = create((set) => ({
   authOpen: false,
   authMode: "login",
   postAuthPath: null,
+  postAuthShare: null,
   languageOpen: false,
   shareOpen: false,
   shareUrl: "",
@@ -12,8 +13,8 @@ export const useUIStore = create((set) => ({
   diamondUpsellContext: null,
   sidebarCollapsed: localStorage.getItem("sidebarCollapsed") === "1",
 
-  openAuth: ({ mode = "login", postAuthPath = null } = {}) =>
-    set({ authOpen: true, authMode: mode, postAuthPath }),
+  openAuth: ({ mode = "login", postAuthPath = null, postAuthShare = null } = {}) =>
+    set({ authOpen: true, authMode: mode, postAuthPath, postAuthShare }),
 
   closeAuth: () => set({ authOpen: false }),
 
@@ -43,6 +44,15 @@ export const useUIStore = create((set) => ({
     set((s) => {
       next = s.postAuthPath;
       return { postAuthPath: null };
+    });
+    return next;
+  },
+
+  consumePostAuthShare: () => {
+    let next = null;
+    set((s) => {
+      next = s.postAuthShare;
+      return { postAuthShare: null };
     });
     return next;
   },

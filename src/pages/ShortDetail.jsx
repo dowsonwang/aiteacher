@@ -18,6 +18,9 @@ export default function ShortDetail() {
   const toggleFavoriteShort = useAppStore((s) => s.toggleFavoriteShort);
   const openShare = useUIStore((s) => s.openShare);
 
+  const session = useAppStore((s) => s.session);
+  const openAuth = useUIStore((s) => s.openAuth);
+
   const drama = useMemo(() => shortDramas.find((d) => d.id === id) || shortDramas[0], [id]);
   const [episode, setEpisode] = useState(1);
   const initKeyRef = useRef("");
@@ -342,6 +345,10 @@ export default function ShortDetail() {
                     <button
                       type="button"
                       onClick={() => {
+                        if (!session.isLoggedIn) {
+                          openAuth({ mode: "login", postAuthPath: `/shorts/${drama.id}` });
+                          return;
+                        }
                         const r = unlockShortEpisode({ dramaId: drama.id, episode, cost: unlockCost });
                         if (!r.ok) {
                           showToast("error", "Not enough 💎.");
@@ -382,13 +389,17 @@ export default function ShortDetail() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    if (!session.isLoggedIn) {
+                      openAuth({ mode: "login", postAuthPath: `/shorts/${drama.id}` });
+                      return;
+                    }
                     setLiked((v) => {
                       const next = !v;
                       setLikeDelta((d) => d + (next ? 1 : -1));
                       return next;
-                    })
-                  }
+                    });
+                  }}
                   className={cn(
                     "inline-flex h-10 w-10 items-center justify-center rounded-2xl border",
                     liked ? "border-rose-200 bg-rose-50 text-rose-600" : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50",
@@ -401,6 +412,10 @@ export default function ShortDetail() {
                 <button
                   type="button"
                   onClick={() => {
+                    if (!session.isLoggedIn) {
+                      openAuth({ mode: "login", postAuthPath: `/shorts/${drama.id}` });
+                      return;
+                    }
                     setSaveDelta((d) => d + (saved ? -1 : 1));
                     toggleFavoriteShort(drama.id);
                   }}
@@ -415,7 +430,13 @@ export default function ShortDetail() {
                 <div className="min-w-[44px] text-xs font-semibold text-zinc-600">{displaySaveCount.toLocaleString()}</div>
                 <button
                   type="button"
-                  onClick={() => openShare({ url: shareUrl, title: "分享" })}
+                  onClick={() => {
+                    if (!session.isLoggedIn) {
+                      openAuth({ mode: "login", postAuthPath: `/shorts/${drama.id}`, postAuthShare: { url: shareUrl, title: "分享" } });
+                      return;
+                    }
+                    openShare({ url: shareUrl, title: "分享" });
+                  }}
                   className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
                   aria-label="Share"
                 >
@@ -440,6 +461,10 @@ export default function ShortDetail() {
                     onClick={() => {
                       if (canPlay) {
                         setEpisode(ep);
+                        return;
+                      }
+                      if (!session.isLoggedIn) {
+                        openAuth({ mode: "login", postAuthPath: `/shorts/${drama.id}` });
                         return;
                       }
                       const r = unlockShortEpisode({ dramaId: drama.id, episode: ep, cost: unlockCost });

@@ -433,7 +433,7 @@ export const useAppStore = create(
           subscription: { ...state.subscription, renew: !state.subscription.renew },
         })),
 
-      startCharacterCreation: ({ initialGender = "" } = {}) => {
+      startCharacterCreation: ({ initialGender = "", kind = "human" } = {}) => {
         const state = get();
         const accountKey = state.session?.accountKey;
         if (!accountKey) return { ok: false, reason: "login" };
@@ -445,10 +445,12 @@ export const useAppStore = create(
         if (existingDraft?.id) return { ok: true, id: existingDraft.id, reused: true };
         const id = `cr_${generateId()}`;
         const now = Date.now();
+        const isAnime = kind === "anime";
         const record = {
           id,
           ownerKey: accountKey,
-          status: initialGender ? "appearance" : "gender",
+          kind: isAnime ? "anime" : "human",
+          status: isAnime ? "anime-basic" : initialGender ? "appearance" : "gender",
           createdAt: now,
           updatedAt: now,
           appearance: {
@@ -465,12 +467,14 @@ export const useAppStore = create(
             name: "",
             country: "",
             age: "",
+            language: "",
             personality: [],
           },
           portraitUrl: "",
           characterIdea: "",
           texts: { relation: "", scenario: "", firstMessage: "", example: "" },
-          isPublic: false,
+          isPublic: isAnime,
+          isPublicTouched: false,
           characterId: "",
         };
         set((s) => ({
@@ -499,6 +503,7 @@ export const useAppStore = create(
         if (!record) return { ok: false, reason: "invalid" };
 
         const appearance = record.appearance || {};
+        const isAnime = record.kind === "anime";
         const name = `${appearance.name || "Character"}`.trim() || "Character";
         const personality = Array.isArray(appearance.personality) ? appearance.personality : [];
         const bioParts = [`${record.texts?.relation || ""}`.trim(), `${record.texts?.scenario || ""}`.trim()].filter(Boolean);
@@ -508,7 +513,7 @@ export const useAppStore = create(
         const character = {
           id: characterId,
           name,
-          age: 25,
+          age: isAnime ? null : 25,
           bio,
           starter,
           avatarUrl: record.portraitUrl,
@@ -518,6 +523,7 @@ export const useAppStore = create(
           ownerKey: accountKey,
           isPublic: Boolean(isPublic),
           profile: { ...appearance },
+          ...(isAnime ? { kind: "anime" } : {}),
         };
 
         set((s) => {

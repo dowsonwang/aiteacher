@@ -23,6 +23,13 @@ const makeDefaultAvatar = (seed) =>
     `Minimal profile avatar, neutral background, realistic, no text, seed ${seed}`,
   )}&image_size=square`;
 
+const ANIME_FEED_ID = "feed-anime-01";
+const ANIME_FEED_CHARACTER_ID = "c25";
+const ANIME_FEED_ASSETS = {
+  video: "/videos/feed/anime/anime-feed-01.mp4",
+  cover: "/images/feed/anime/anime-feed-01-cover.png",
+};
+
 export default function Feed() {
   const navigate = useNavigate();
   const session = useAppStore((s) => s.session);
@@ -93,6 +100,18 @@ export default function Feed() {
         likeCount: 4200,
         shareCount: 66,
       },
+      {
+        id: ANIME_FEED_ID,
+        videoSrc: `${ANIME_FEED_ASSETS.video}?v=${assetVersion}`,
+        username: "@aki",
+        caption: "Anime companion: step into a soft sci-fi scene and chat with Aki.",
+        tags: ["#anime", "#roleplay"],
+        characterId: ANIME_FEED_CHARACTER_ID,
+        hasShorts: false,
+        shortId: null,
+        likeCount: 6800,
+        shareCount: 92,
+      },
     ].filter((x) => x.characterId);
   }, [assetVersion, baseCharacters]);
 
@@ -132,6 +151,19 @@ export default function Feed() {
 
   const active = items[index] || items[0];
   const character = characters.find((c) => c.id === active?.characterId);
+  const displayCharacter = useMemo(() => {
+    if (active?.id !== ANIME_FEED_ID || !character) return character;
+    return {
+      ...character,
+      age: null,
+      kind: "anime",
+      avatarUrl: `${ANIME_FEED_ASSETS.cover}?v=${assetVersion}`,
+      heroUrl: `${ANIME_FEED_ASSETS.cover}?v=${assetVersion}`,
+      fallbackUrl: `${ANIME_FEED_ASSETS.cover}?v=${assetVersion}`,
+      bio: "Anime conversation partner. Expressive stories, cozy role-play, and gentle daily chats.",
+    };
+  }, [active?.id, assetVersion, character]);
+  const showCharacterAge = Boolean(displayCharacter?.age);
   const characterShorts = useMemo(() => {
     if (!character?.id) return [];
     return shortDramas.filter((d) => d.characterId === character.id);
@@ -139,12 +171,13 @@ export default function Feed() {
   const isVideoLocked = Boolean(active?.requiresUnlock) && !Boolean(unlockedFeedVideos?.[active?.id]);
   const clips = useMemo(() => {
     const activeId = active?.id || "feed";
+    const isAnimeFeed = activeId === ANIME_FEED_ID;
     return Array.from({ length: 8 }).map((_, i) => {
       const n = (i % 4) + 1;
       return {
         id: `${activeId}-clip-${String(i + 1).padStart(2, "0")}`,
-        videoSrc: `/videos/feed/feed-0${n}.mp4?v=${assetVersion}`,
-        coverUrl: `/images/home/shorts-cover${n}.png?v=${assetVersion}`,
+        videoSrc: isAnimeFeed ? `${ANIME_FEED_ASSETS.video}?v=${assetVersion}` : `/videos/feed/feed-0${n}.mp4?v=${assetVersion}`,
+        coverUrl: isAnimeFeed ? `${ANIME_FEED_ASSETS.cover}?v=${assetVersion}` : `/images/home/shorts-cover${n}.png?v=${assetVersion}`,
         index: i + 1,
         free: i === 0,
       };
@@ -225,6 +258,15 @@ export default function Feed() {
         createdAt: Date.now() - 60000 * 8,
         text: "Listening tip: should I focus on keywords or every word?",
         likes: 4,
+      },
+    ],
+    c25: [
+      {
+        id: "c-anime-01",
+        user: { name: "Mira", avatar: makeDefaultAvatar("mira") },
+        createdAt: Date.now() - 60000 * 18,
+        text: "The anime atmosphere feels so soft. Can we do a cozy sci-fi scene next?",
+        likes: 11,
       },
     ],
   }));
@@ -332,10 +374,6 @@ export default function Feed() {
   const startChat = () => {
     if (!character) return;
     const conversationId = openConversationForCharacter(character.id);
-    if (!session.isLoggedIn) {
-      openAuth({ mode: "login", postAuthPath: `/chat/${conversationId}` });
-      return;
-    }
     navigate(`/chat/${conversationId}`);
   };
 
@@ -364,6 +402,10 @@ export default function Feed() {
   };
 
   const toggleCommentLike = (commentId) => {
+    if (!session.isLoggedIn) {
+      openAuth({ mode: "login", postAuthPath: "/feed" });
+      return;
+    }
     setCommentLikes((prev) => ({ ...prev, [commentId]: !prev[commentId] }));
   };
 
@@ -421,6 +463,7 @@ export default function Feed() {
                   ref={videoRef}
                   className="absolute inset-0 h-full w-full object-cover"
                   src={mainVideoSrc}
+                  poster={active?.id === ANIME_FEED_ID ? `${ANIME_FEED_ASSETS.cover}?v=${assetVersion}` : undefined}
                   playsInline
                   muted
                   onPlay={() => setIsPlaying(true)}
@@ -443,6 +486,10 @@ export default function Feed() {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (!session.isLoggedIn) {
+                      openAuth({ mode: "login", postAuthPath: "/feed" });
+                      return;
+                    }
                     setLiked((v) => !v);
                   }}
                   className="flex flex-col items-center gap-1 text-white/90"
@@ -480,6 +527,10 @@ export default function Feed() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (!session.isLoggedIn) {
+                          openAuth({ mode: "login", postAuthPath: "/feed" });
+                          return;
+                        }
                         const r = unlockFeedVideo({ feedId: active.id, cost: active.unlockCost || 2 });
                         if (!r.ok) {
                           if (r.reason === "diamonds") {
@@ -528,6 +579,10 @@ export default function Feed() {
                         type="button"
                         onClick={() => {
                           if (!unlocked && !clip.free) {
+                            if (!session.isLoggedIn) {
+                              openAuth({ mode: "login", postAuthPath: "/feed" });
+                              return;
+                            }
                             const r = unlockFeedVideo({ feedId: clip.id, cost: 2 });
                             if (!r.ok) {
                               if (r.reason === "diamonds") {
@@ -600,8 +655,8 @@ export default function Feed() {
               <div className="flex items-center gap-4">
                 <div className="relative">
                   <img
-                    src={character.avatarUrl}
-                    alt={character.name}
+                    src={displayCharacter.avatarUrl}
+                    alt={displayCharacter.name}
                     className="relative h-16 w-16 rounded-full object-cover ring-2 ring-white/10"
                   />
                 </div>
@@ -609,13 +664,19 @@ export default function Feed() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-baseline gap-2">
-                        <div className="truncate text-lg font-semibold text-white">{character.name}</div>
-                        <div className="text-xs text-white/60">{character.age ? `${character.age}` : ""}</div>
+                        <div className="truncate text-lg font-semibold text-white">{displayCharacter.name}</div>
+                        <div className="text-xs text-white/60">{showCharacterAge ? `${displayCharacter.age}` : ""}</div>
                       </div>
                     </div>
                     <button
                       type="button"
-                      onClick={() => setFollowed((v) => !v)}
+                      onClick={() => {
+                        if (!session.isLoggedIn) {
+                          openAuth({ mode: "login", postAuthPath: "/feed" });
+                          return;
+                        }
+                        setFollowed((v) => !v);
+                      }}
                       className={
                         followed
                           ? "h-9 flex-shrink-0 rounded-2xl bg-white/15 px-4 text-xs font-semibold text-white hover:bg-white/20"
@@ -625,7 +686,7 @@ export default function Feed() {
                       {followed ? "Following" : "Follow"}
                     </button>
                   </div>
-                  <div className="mt-2 line-clamp-3 text-sm text-white/75">{character.bio}</div>
+                  <div className="mt-2 line-clamp-3 text-sm text-white/75">{displayCharacter.bio}</div>
                 </div>
               </div>
 
@@ -671,7 +732,13 @@ export default function Feed() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => openShare({ url: shareUrl, title: "分享" })}
+                        onClick={() => {
+                          if (!session.isLoggedIn) {
+                            openAuth({ mode: "login", postAuthPath: "/feed", postAuthShare: { url: shareUrl, title: "分享" } });
+                            return;
+                          }
+                          openShare({ url: shareUrl, title: "分享" });
+                        }}
                         className="flex-1 rounded-2xl border border-white/25 bg-white/10 px-4 py-3 text-sm font-semibold text-white hover:bg-white/15"
                       >
                         Share

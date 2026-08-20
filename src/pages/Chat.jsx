@@ -1,32 +1,21 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Outlet, useNavigate, useParams } from "react-router-dom";
 import { cn } from "../lib/utils.js";
 import { t } from "../i18n/i18n.js";
 import Modal from "../components/Modal.jsx";
 import { useAppStore } from "../stores/useAppStore.js";
-import { useUIStore } from "../stores/useUIStore.js";
 
 export default function Chat() {
   const navigate = useNavigate();
   const { id } = useParams();
   const language = useAppStore((s) => s.language);
-  const session = useAppStore((s) => s.session);
-  const openAuth = useUIStore((s) => s.openAuth);
   const getAllCharacters = useAppStore((s) => s.getAllCharacters);
   const conversations = useAppStore((s) => s.conversations);
   const deleteConversation = useAppStore((s) => s.deleteConversation);
 
   const characters = getAllCharacters();
-  const prompted = useRef(false);
   const [contextMenu, setContextMenu] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState("");
-
-  useEffect(() => {
-    if (session.isLoggedIn) return;
-    if (prompted.current) return;
-    prompted.current = true;
-    openAuth({ mode: "login", postAuthPath: id ? `/chat/${id}` : "/chat" });
-  }, [id, openAuth, session.isLoggedIn]);
 
   const latestConversationId = useMemo(() => {
     if (!conversations.length) return "";
@@ -34,11 +23,10 @@ export default function Chat() {
   }, [conversations]);
 
   useEffect(() => {
-    if (!session.isLoggedIn) return;
     if (id) return;
     if (!latestConversationId) return;
     navigate(`/chat/${latestConversationId}`, { replace: true });
-  }, [id, latestConversationId, navigate, session.isLoggedIn]);
+  }, [id, latestConversationId, navigate]);
 
   const listItems = useMemo(
     () =>
@@ -57,23 +45,6 @@ export default function Chat() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [contextMenu]);
-
-  if (!session.isLoggedIn) {
-    return (
-      <div className="-mx-6 -my-6 flex h-[calc(100dvh-56px)] w-full items-center justify-center overflow-hidden p-3">
-        <div className="flex h-full w-full flex-col items-center justify-center gap-3 rounded-3xl border border-zinc-200 bg-white px-6 shadow-sm">
-        <div className="text-sm text-zinc-600">{t(language, "chat_need_login")}</div>
-        <button
-          type="button"
-          onClick={() => openAuth({ mode: "login", postAuthPath: id ? `/chat/${id}` : "/chat" })}
-          className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
-        >
-          {t(language, "top_login")}
-        </button>
-        </div>
-      </div>
-    );
-  }
 
   if (!conversations.length) {
     return (

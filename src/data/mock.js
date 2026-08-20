@@ -3,6 +3,11 @@ const imageUrl = (prompt, imageSize = "square") =>
     prompt,
   )}&image_size=${imageSize}`;
 
+const animeImageUrl = (prompt, imageSize = "square") =>
+  `https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=${encodeURIComponent(
+    prompt,
+  )}&image_size=${imageSize}`;
+
 export const banners = [
   {
     id: "b1",
@@ -57,7 +62,9 @@ const localCharacterImageForIndex = (index) => {
   return localCharacterImages[safeIdx] || localCharacterImages[0];
 };
 
-const makeCharacter = ({ index, name, age, bio, starter, avatarPrompt, heroUrl, tags = [], kind }) => {
+const animeLanguagePool = ["Japanese", "English", "Chinese", "French", "German"];
+
+const makeCharacter = ({ index, name, age, bio, starter, avatarPrompt, heroUrl, tags = [], kind, language }) => {
   const avatarUrl = imageUrl(avatarPrompt, "square");
   return {
     id: `c${index}`,
@@ -70,9 +77,121 @@ const makeCharacter = ({ index, name, age, bio, starter, avatarPrompt, heroUrl, 
     fallbackUrl: avatarUrl,
     tags,
     kind,
+    ...(language ? { language } : {}),
     stats: { heat: 0, online: true },
   };
 };
+
+const animeMockPresets = [
+  {
+    name: "Sora",
+    prompt: "an adult anime sky adventurer with silver-blue hair and a light jacket",
+    bio: "Anime adventure partner. Bright stories, quick encouragement, and imaginative role-play scenes.",
+    starter: "Tell me where you want our story to begin, and I’ll set the scene.",
+  },
+  {
+    name: "Mina",
+    prompt: "an adult anime cafe owner with warm brown hair and a cozy apron",
+    bio: "Anime cafe companion. Cozy conversations, daily stories, and gentle emotional support.",
+    starter: "Welcome in. Tell me what kind of day you had, and I’ll make it a little softer.",
+  },
+  {
+    name: "Theo",
+    prompt: "an adult anime bookshop keeper with dark hair and round glasses",
+    bio: "Anime story curator. Thoughtful chats, fictional worlds, and quiet late-night conversations.",
+    starter: "Pick a mood: mystery, comfort, adventure, or something strange and beautiful.",
+  },
+  {
+    name: "Rin",
+    prompt: "an adult anime sword instructor with tied black hair and a calm expression",
+    bio: "Anime discipline coach. Focused conversations, confidence practice, and steady motivation.",
+    starter: "Tell me one thing you want to improve, and I’ll help you take the first step.",
+  },
+  {
+    name: "Emi",
+    prompt: "an adult anime illustrator with colorful hair and a paint-splattered jacket",
+    bio: "Anime creative partner. Visual ideas, playful prompts, and expressive character storytelling.",
+    starter: "Give me three random words, and I’ll turn them into a scene.",
+  },
+  {
+    name: "Kaede",
+    prompt: "an adult anime garden designer with green eyes and soft autumn colors",
+    bio: "Anime nature companion. Calm chats, reflective prompts, and peaceful slice-of-life stories.",
+    starter: "Let’s slow down. Tell me one small thing you noticed today.",
+  },
+  {
+    name: "Riku",
+    prompt: "an adult anime pilot with navy hair and a futuristic flight jacket",
+    bio: "Anime sci-fi companion. Fast-moving stories, curious questions, and cinematic role-play.",
+    starter: "Our ship is ready. Tell me whether we’re heading toward danger or discovery.",
+  },
+  {
+    name: "Nao",
+    prompt: "an adult anime radio host with short copper hair and headphones",
+    bio: "Anime late-night host. Easy conversation, music moods, and honest talks after dark.",
+    starter: "You’re on the air. Tell me what song or feeling fits your night.",
+  },
+  {
+    name: "Airi",
+    prompt: "an adult anime astronomer with lavender hair and a star-patterned coat",
+    bio: "Anime stargazing partner. Wonder-filled chats, gentle curiosity, and dreamy story prompts.",
+    starter: "Choose a star, and I’ll tell you what kind of story might live there.",
+  },
+  {
+    name: "Sena",
+    prompt: "an adult anime detective with ash-gray hair and a long dark coat",
+    bio: "Anime mystery partner. Clever clues, tense scenes, and interactive detective role-play.",
+    starter: "Give me one strange detail, and I’ll start building the case.",
+  },
+  {
+    name: "Haru",
+    prompt: "an adult anime chef with black hair and a clean white uniform",
+    bio: "Anime kitchen companion. Warm conversations, comfort food stories, and playful challenges.",
+    starter: "Tell me your favorite comfort food, and I’ll invent a scene around it.",
+  },
+  {
+    name: "Yuna",
+    prompt: "an adult anime violinist with long auburn hair and a burgundy dress",
+    bio: "Anime music companion. Expressive conversations, emotional scenes, and lyrical storytelling.",
+    starter: "Tell me a feeling you can’t explain, and I’ll turn it into music.",
+  },
+  {
+    name: "Toma",
+    prompt: "an adult anime mechanic with messy blond hair and a workshop backdrop",
+    bio: "Anime workshop partner. Practical chats, humor, and energetic problem-solving stories.",
+    starter: "Bring me a problem, big or small, and we’ll tinker with it together.",
+  },
+  {
+    name: "Riko",
+    prompt: "an adult anime archivist with teal hair and a high-collared uniform",
+    bio: "Anime archive guide. Secret histories, strange documents, and careful investigative chats.",
+    starter: "Ask me to open one forbidden file, and I’ll tell you what it contains.",
+  },
+  {
+    name: "Mira",
+    prompt: "an adult anime fashion designer with rose gold hair and bold earrings",
+    bio: "Anime style companion. Playful conversations, character looks, and confident self-expression.",
+    starter: "Tell me the mood you want to wear today, and I’ll style the scene.",
+  },
+  {
+    name: "Kyo",
+    prompt: "an adult anime stage actor with dark red hair and theatrical lighting",
+    bio: "Anime drama partner. Bold role-play, emotional scenes, and theatrical storytelling.",
+    starter: "Give me a role to play, and I’ll step onto the stage.",
+  },
+  {
+    name: "Niko",
+    prompt: "an adult anime photographer with sandy hair and a camera strap",
+    bio: "Anime travel companion. Visual memories, city stories, and curious conversations.",
+    starter: "Tell me one place you miss, and I’ll describe the photo I would take there.",
+  },
+  {
+    name: "Lumi",
+    prompt: "an adult anime light researcher with white hair and iridescent clothing",
+    bio: "Anime dream guide. Soft sci-fi chats, luminous worlds, and calming imaginative scenes.",
+    starter: "Close your eyes for a second, then tell me what color your thoughts feel like.",
+  },
+];
 
 export const characters = [
   makeCharacter({
@@ -212,6 +331,22 @@ export const characters = [
       "portrait_16_9",
     ),
   }),
+  ...animeMockPresets.map((item, index) =>
+    makeCharacter({
+      index: index + 31,
+      name: item.name,
+      age: null,
+      language: animeLanguagePool[index % animeLanguagePool.length],
+      bio: item.bio,
+      starter: item.starter,
+      kind: "anime",
+      avatarPrompt: `Anime style portrait of ${item.prompt}, expressive eyes, clean background, polished modern character art, high detail, no text`,
+      heroUrl: animeImageUrl(
+        `Anime style three-quarter portrait of ${item.prompt}, expressive eyes, clean vibrant background, polished modern character art, high quality, no text, vertical`,
+        "portrait_16_9",
+      ),
+    }),
+  ),
 ];
 
 const liveNames = ["Lynn", "Ryo", "Mika", "Noah", "Ava", "Kai", "Yuna", "Mason", "Lia", "Ethan"];
