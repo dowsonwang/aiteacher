@@ -8,7 +8,7 @@ import SectionHeader from "../components/SectionHeader.jsx";
 import { ChevronDown, Compass, Film, Wand2 } from "lucide-react";
 import { getCharacterCategoryFromPath } from "../lib/characterCategories.js";
 import { cn } from "../lib/utils.js";
-import { liveHosts, shortDramas } from "../data/mock.js";
+import { liveHosts, publicAssets, shortDramas } from "../data/mock.js";
 import { useAppStore } from "../stores/useAppStore.js";
 
 const categoryContent = {
@@ -152,18 +152,12 @@ export default function BrowseHome() {
   const isAllCategory = activeCategory === "all";
   const content = categoryContent[activeCategory] || categoryContent.all;
   const assetVersion = useMemo(() => Date.now().toString(), []);
-  const liveCoverSrc = `/images/home/live-cover.png?v=${assetVersion}`;
+  const liveCoverSrc = publicAssets.liveCover;
   const t2i = (prompt, imageSize) =>
     `https://coreva-normal.trae.ai/api/ide/v1/text_to_image?prompt=${encodeURIComponent(prompt)}&image_size=${imageSize}`;
   const getShortsCoverSrc = (i) => {
-    const sources = [
-      "/images/create/fixed-portrait.png",
-      "/images/create/results/standard/hero-1.png",
-      "/images/create/results/vip/candidate-1-hero.png",
-      "/images/create/fixed-portrait-2.png",
-    ];
-    const src = sources[i % sources.length];
-    return `${src}?v=${assetVersion}`;
+    // 直接使用 mock 层的场景语义化短剧封面组（6张循环）
+    return publicAssets.shortsCovers[i % publicAssets.shortsCovers.length];
   };
   const onStartChat = (characterId) => {
     const conversationId = openConversationForCharacter(characterId);
@@ -185,22 +179,22 @@ export default function BrowseHome() {
   const heroLinks = useMemo(
     () => [
       {
-        label: "Micro-Dramas",
-        href: "/shorts",
-        Icon: Film,
-        accent: "from-amber-200/60 via-orange-100/40 to-rose-200/50",
-        coverUrl: t2i(
-          "a cinematic still of a modern language learning short video, vertical reel style, warm studio lighting, abstract typography shapes, vibrant gradient, high contrast, premium app aesthetic, no text, ultra realistic, 35mm",
-          "landscape_4_3",
-        ),
-      },
-      {
         label: "Discover",
         href: "/feed",
         Icon: Compass,
         accent: "from-sky-200/60 via-cyan-100/40 to-emerald-200/50",
         coverUrl: t2i(
           "a premium discovery feed for language learners, floating video cards and chat bubbles, clean white UI, soft shadows, neon accent gradient, modern minimal design, no text, ultra realistic, high detail",
+          "landscape_4_3",
+        ),
+      },
+      {
+        label: "Micro-Dramas",
+        href: "/shorts",
+        Icon: Film,
+        accent: "from-amber-200/60 via-orange-100/40 to-rose-200/50",
+        coverUrl: t2i(
+          "a cinematic still of a modern language learning short video, vertical reel style, warm studio lighting, abstract typography shapes, vibrant gradient, high contrast, premium app aesthetic, no text, ultra realistic, 35mm",
           "landscape_4_3",
         ),
       },
@@ -260,40 +254,40 @@ export default function BrowseHome() {
 
   const tourSteps = [
     {
-      key: "home-hero-shorts",
-      target: heroShortsRef.current,
-      title: "Micro-Dramas",
-      body: "进入 Micro-Dramas，浏览平台精选短剧内容，快速开始观看。",
-    },
-    {
       key: "home-hero-discover",
       target: heroDiscoverRef.current,
       title: "Discover",
-      body: "进入 Discover，观看精彩短视频内容，并探索更多角色。",
+      body: "Head into Discover to watch great short videos and explore more characters.",
+    },
+    {
+      key: "home-hero-shorts",
+      target: heroShortsRef.current,
+      title: "Micro-Dramas",
+      body: "Jump into Micro-Dramas to browse our curated short dramas and start watching right away.",
     },
     {
       key: "home-hero-create",
       target: heroCreateRef.current,
       title: "Create",
-      body: "进入 Create，可免费或付费创建人物，完成更个性化的角色定制。",
+      body: "Open Create to build your own character, free or premium, for a more personalized companion.",
     },
     {
       key: "home-shorts-module",
       target: homeShortsModuleRef.current,
-      title: "Crowdsourced Micro-Dramas",
-      body: "这里展示当前推荐的短剧内容。你可以横向浏览卡片，并点击进入播放页。",
+      title: "Playable Micro-Dramas",
+      body: "Here are the currently recommended playable micro-dramas. Scroll sideways through the cards and tap one to start playing.",
     },
     {
       key: "home-character-filter",
       target: categoryTabsTarget,
       title: "Character categories",
-      body: "使用顶部分类 Tab 切换 All / Female / Male / Anime 人物。",
+      body: "Tons of characters in all kinds of styles. Use the category tabs on top to switch between All / Female / Male / Anime and quickly find the one you want to chat with.",
     },
     {
       key: "home-first-character",
       target: firstCharacterRef.current,
       title: "Start a chat",
-      body: "点击任意人物卡片即可进入对话，与该角色开始聊天。",
+      body: "Tap any character card to open a conversation and start chatting.",
     },
   ];
 
@@ -359,7 +353,7 @@ export default function BrowseHome() {
 
           <section className="flex h-full flex-col overflow-hidden rounded-[28px] border border-zinc-200 bg-white p-6 shadow-sm">
             <div ref={homeShortsModuleRef} className="flex items-center justify-between gap-3">
-              <div className="text-base font-semibold text-zinc-900">Crowdsourced Micro-Dramas</div>
+              <div className="text-base font-semibold text-zinc-900">Playable Micro-Dramas</div>
               <button type="button" onClick={() => navigate("/shorts")} className="text-sm font-medium text-zinc-600 hover:text-zinc-900">
                 View all →
               </button>

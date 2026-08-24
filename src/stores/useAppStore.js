@@ -89,13 +89,6 @@ export const useAppStore = create(
 
       setLanguage: (language) => set({ language }),
 
-      hasConfirmedAge: ({ displayName = "", email = "", provider = "" } = {}) => {
-        const accountKey = makeAccountKey({ displayName, email, provider });
-        if (!accountKey) return false;
-        const record = get().ageConfirmations?.[accountKey];
-        return Boolean(record?.confirmed);
-      },
-
       confirmAge: ({ displayName, email = "", provider = "" } = {}) =>
         set((state) => {
           const accountKey = makeAccountKey({ displayName, email, provider });

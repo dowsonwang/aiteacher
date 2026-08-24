@@ -3,6 +3,7 @@ import { useBlocker, useNavigate, useSearchParams } from "react-router-dom";
 import { Check, ChevronLeft, ChevronRight, Globe2, Image as ImageIcon, Lock, RefreshCw, Sparkles, X } from "lucide-react";
 import DiamondIcon from "../components/DiamondIcon.jsx";
 import Modal from "../components/Modal.jsx";
+import { publicAssets } from "../data/mock.js";
 import { cn } from "../lib/utils.js";
 import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
@@ -15,8 +16,8 @@ const heroBackgroundUrl = imageUrl(
   "landscape_16_9",
 );
 
-const fixedPortraitUrls = ["/images/create/fixed-portrait.png", "/images/create/fixed-portrait-2.png"];
-const recordFallbackUrl = "/images/chat/ai-reply-01.png";
+const fixedPortraitUrls = publicAssets.createFixedPortrait;
+const recordFallbackUrl = publicAssets.chatAIImage;
 const optionLabel = (options, value) => options.find((o) => o.value === value)?.label || value;
 
 const APPEARANCE_OPTIONS = {

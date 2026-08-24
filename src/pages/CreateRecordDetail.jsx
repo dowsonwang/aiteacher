@@ -2,9 +2,10 @@ import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 import Modal from "../components/Modal.jsx";
+import { publicAssets } from "../data/mock.js";
 import { useAppStore } from "../stores/useAppStore.js";
 
-const recordFallbackUrl = "/images/chat/ai-reply-01.png";
+const recordFallbackUrl = publicAssets.chatAIImage;
 
 export default function CreateRecordDetail() {
   const navigate = useNavigate();

@@ -1,5 +1,4 @@
 import { Outlet } from "react-router-dom";
-import AgeGateModal from "../components/AgeGateModal.jsx";
 import AuthModal from "../components/AuthModal.jsx";
 import DiamondUpsellModal from "../components/DiamondUpsellModal.jsx";
 import LanguageModal from "../components/LanguageModal.jsx";
@@ -12,16 +11,9 @@ import { useUIStore } from "../stores/useUIStore.js";
 
 export default function AppShell() {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
-  const session = useAppStore((s) => s.session);
-  const ageConfirmations = useAppStore((s) => s.ageConfirmations);
-  const confirmAge = useAppStore((s) => s.confirmAge);
-  const logout = useAppStore((s) => s.logout);
   const expandedSidebarWidth = 224;
   const mainHorizontalPadding = 48;
   const collapsedMaxWidth = `calc(100vw - ${expandedSidebarWidth + mainHorizontalPadding}px)`;
-
-  const needsAgeConfirm =
-    Boolean(session?.isLoggedIn) && !ageConfirmations?.[session.accountKey]?.confirmed;
 
   return (
     <div className="h-dvh w-full bg-zinc-50">
@@ -43,18 +35,6 @@ export default function AppShell() {
       <DiamondUpsellModal />
       <LanguageModal />
       <ShareModal />
-      <AgeGateModal
-        open={needsAgeConfirm}
-        mode="existing"
-        onConfirm={() =>
-          confirmAge({
-            displayName: session.displayName,
-            email: session.email,
-            provider: session.provider,
-          })
-        }
-        onCancel={logout}
-      />
     </div>
   );
 }

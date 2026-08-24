@@ -9,6 +9,7 @@ export default function OnboardingTour({ open, step, steps, onNext, onClose }) {
   const target = steps?.[step]?.target || null;
   const title = steps?.[step]?.title || "";
   const body = steps?.[step]?.body || "";
+  const actionText = steps?.[step]?.actionText || "";
   const isLastStep = step >= (steps?.length || 1) - 1;
 
   const [rect, setRect] = useState(null);
@@ -128,22 +129,34 @@ export default function OnboardingTour({ open, step, steps, onNext, onClose }) {
           <div className="text-sm font-semibold">{title}</div>
           <div className="mt-2 text-sm leading-relaxed text-white/85">{body}</div>
           <div className="mt-5 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-2xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/15"
-            >
-              关闭
-            </button>
-            <button
-              type="button"
-              onClick={onNext}
-              className={cn(
-                "rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-100",
-              )}
-            >
-              {isLastStep ? "完成" : "下一步"}
-            </button>
+            {actionText ? (
+              <button
+                type="button"
+                onClick={onNext}
+                className="rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-100"
+              >
+                {actionText}
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-2xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/15"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={onNext}
+                  className={cn(
+                    "rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-100",
+                  )}
+                >
+                  {isLastStep ? "Done" : "Next"}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

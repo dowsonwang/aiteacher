@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ImmersiveCharacterCard from "../components/ImmersiveCharacterCard.jsx";
-import { shortDramas } from "../data/mock.js";
+import { shortDramas, publicAssets } from "../data/mock.js";
 import { cn } from "../lib/utils.js";
 import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
@@ -23,19 +23,9 @@ export default function Favorites() {
   const openAuth = useUIStore((s) => s.openAuth);
   const [tab, setTab] = useState("shorts");
   const askedAuthRef = useRef(false);
-  const gateImgSrc = useMemo(() => `/images/home/login.png?v=${Date.now().toString()}`, []);
+  const gateImgSrc = publicAssets.loginBanner;
   const assetVersion = useMemo(() => Date.now().toString(), []);
-  const getShortsCoverSrc = (i) => {
-    const sources = [
-      "/images/home/shorts-cover.png",
-      "/images/home/shorts-cover1.png",
-      "/images/home/shorts-cover2.png",
-      "/images/home/shorts-cover3.png",
-      "/images/home/shorts-cover4.png",
-    ];
-    const src = sources[i] || sources[0];
-    return `${src}?v=${assetVersion}`;
-  };
+  const getShortsCoverSrc = (i) => publicAssets.shortsCovers[i % publicAssets.shortsCovers.length];
   const shortsVideoSrcForIndex = (i) => `/videos/feed/feed-0${(i % 4) + 1}.mp4?v=${assetVersion}`;
   const shortsVideoRefs = useRef(new Map());
   const [hoveredShortId, setHoveredShortId] = useState("");
@@ -167,7 +157,7 @@ export default function Favorites() {
                           isHover ? "opacity-0" : "opacity-100",
                         )}
                         onError={(e) => {
-                          e.currentTarget.src = `/images/home/shorts-cover.png?v=${assetVersion}`;
+                          e.currentTarget.src = publicAssets.shortsCovers[0];
                         }}
                       />
                       <video

@@ -19,7 +19,7 @@ import Modal from "../components/Modal.jsx";
 import OnboardingTour from "../components/OnboardingTour.jsx";
 import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
-import { shortDramas } from "../data/mock.js";
+import { shortDramas, publicAssets } from "../data/mock.js";
 
 const requestImageCost = 1;
 const requestVideoCost = 2;
@@ -125,8 +125,8 @@ export default function ChatRoom() {
   }, [conversation?.id]);
 
   const assetVersion = useMemo(() => Date.now().toString(), []);
-  const aiImageSrc = useMemo(() => `/images/chat/ai-reply-01.png?v=${assetVersion}`, [assetVersion]);
-  const aiImageFallback = useMemo(() => `/images/chat/ai-reply-01.jpg?v=${assetVersion}`, [assetVersion]);
+  const aiImageSrc = publicAssets.chatAIImage;
+  const aiImageFallback = publicAssets.chatAIImage;
   const aiVideoSrc = useMemo(() => `/images/chat/ai-reply-01.mp4?v=${assetVersion}`, [assetVersion]);
   const aiVideoFallback = useMemo(() => `/videos/chat/ai-reply-01.mp4?v=${assetVersion}`, [assetVersion]);
 
@@ -245,7 +245,7 @@ export default function ChatRoom() {
     return matchedShorts.length ? matchedShorts.slice(0, 6) : shortDramas.slice(0, 6);
   }, [character?.name]);
 
-  const profileFallbackSrc = useMemo(() => `/images/create/results/standard/hero-1.png?v=${assetVersion}`, [assetVersion]);
+  const profileFallbackSrc = publicAssets.createStandardHero[0];
   const [profileImgSrc, setProfileImgSrc] = useState(
     character?.heroUrl || character?.fallbackUrl || character?.avatarUrl || profileFallbackSrc,
   );

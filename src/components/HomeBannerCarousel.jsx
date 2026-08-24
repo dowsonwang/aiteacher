@@ -1,8 +1,9 @@
 import { useMemo } from "react";
+import { publicAssets } from "../data/mock.js";
 
 export default function HomeBannerCarousel() {
   const assetVersion = useMemo(() => Date.now().toString(), []);
-  const bannerSrc = useMemo(() => `/images/home/banner3.png?v=${assetVersion}`, [assetVersion]);
+  const bannerSrc = publicAssets.homeBanner3;
 
   return (
     <div className="relative overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm">

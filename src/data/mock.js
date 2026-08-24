@@ -44,15 +44,157 @@ export const banners = [
   },
 ];
 
-const assetVersion = Date.now().toString();
+/* =======================================================================
+ * Reusable placeholder image set (content-aware, replaces static files).
+ * These are returned directly by the mock layer and imported by pages.
+ * ======================================================================= */
+export const publicAssets = {
+  // 登录/授权弹窗背景图 (16:9 hero banner with soft blur area for form overlay)
+  loginBanner: imageUrl(
+    "Soft warm editorial background for a language app login page, calm gradient sky, city window at dusk, blurry bokeh lights in foreground, lots of clean negative space for form overlay, premium app aesthetic, no text, ultra realistic",
+    "landscape_16_9",
+  ),
+  // 首页Banner轮播备用图
+  homeBanner3: imageUrl(
+    "Premium horizontal banner for a language learning product, cinematic collage of people chatting, coffee cup, notebook, warm neutral palette, soft focus, editorial magazine style, no text, ultra realistic",
+    "landscape_16_9",
+  ),
+  // 首页人物展示卡（竖版全身/半身像，男女混排用的公共大图）
+  homePeoplePortrait: imageUrl(
+    "Full body vertical studio portrait of a handsome friendly young man, casual smart outfit, neutral beige background, warm soft studio light, relaxed pose, language tutor vibe, ultra realistic, high detail, no text",
+    "portrait_16_9",
+  ),
+  // 直播模块封面（9:16 预览感）
+  liveCover: imageUrl(
+    "Immersive vertical live stream screenshot preview, cozy bedroom studio, neon led strip lights, host talking to camera, laptop glow, realistic webcam quality, cinematic color grade, no text, ultra realistic",
+    "portrait_16_9",
+  ),
+  // 短剧封面组 - 6张可循环复用，按不同学习主题给场景感
+  shortsCovers: [
+    imageUrl(
+      "Vertical 9:16 short drama cover for daily conversation theme, cafe interior, two people talking over latte, warm afternoon window light, cinematic shallow depth of field, premium movie poster vibe, no text, ultra realistic",
+      "portrait_16_9",
+    ),
+    imageUrl(
+      "Vertical 9:16 short drama cover for grammar class theme, bright classroom, whiteboard with English sentences, young teacher holding book, soft daylight, educational atmosphere, no text, ultra realistic",
+      "portrait_16_9",
+    ),
+    imageUrl(
+      "Vertical 9:16 short drama cover for travel English theme, airport departure gate, woman with suitcase looking at flight board, warm overhead lights, cinematic mood, no text, ultra realistic",
+      "portrait_16_9",
+    ),
+    imageUrl(
+      "Vertical 9:16 short drama cover for workplace English theme, modern open office, two coworkers in meeting with laptop, cool neutral tone, professional lighting, no text, ultra realistic",
+      "portrait_16_9",
+    ),
+    imageUrl(
+      "Vertical 9:16 short drama cover for listening practice theme, girl with headphones in city park, sunset golden hour, warm lens flare, relaxed mood, no text, ultra realistic",
+      "portrait_16_9",
+    ),
+    imageUrl(
+      "Vertical 9:16 short drama cover for pronunciation theme, close-up of woman speaking in front of mirror and microphone, recording studio soft lights, focused vibe, no text, ultra realistic",
+      "portrait_16_9",
+    ),
+  ],
+  // 创建结果：Standard 档 3 张头像
+  createStandardHero: [
+    imageUrl(
+      "Waist-up vertical portrait of a charming young man, light sweater, soft grey background, cinematic studio light, friendly smile, premium dating app profile quality, no text, ultra realistic",
+      "portrait_16_9",
+    ),
+    imageUrl(
+      "Waist-up vertical portrait of an elegant young woman, white shirt and blazer, warm beige background, soft studio light, professional but approachable, no text, ultra realistic",
+      "portrait_16_9",
+    ),
+    imageUrl(
+      "Waist-up vertical portrait of a sporty athletic young man, navy jacket, dark muted background, rim lighting, confident relaxed look, no text, ultra realistic",
+      "portrait_16_9",
+    ),
+  ],
+  // 创建结果：VIP 档 3 张头像（更精致/氛围感）
+  createVIPHero: [
+    imageUrl(
+      "Editorial vertical portrait of a stylish young woman in silk camisole, velvet curtain background, dramatic side light, cinematic high end fashion photo, no text, ultra realistic",
+      "portrait_16_9",
+    ),
+    imageUrl(
+      "Editorial vertical portrait of a handsome businessman in tailored suit, rooftop city skyline at dusk, cinematic blue hour lighting, luxury magazine quality, no text, ultra realistic",
+      "portrait_16_9",
+    ),
+    imageUrl(
+      "Editorial vertical portrait of an artistic young woman, knit sweater, large window morning light, film grain aesthetic, cozy pensive mood, no text, ultra realistic",
+      "portrait_16_9",
+    ),
+  ],
+  // 创建页固定肖像（男女各一张）
+  createFixedPortrait: [
+    imageUrl(
+      "Cinematic three-quarter vertical portrait of a sophisticated young woman, black turtleneck, dark moody studio, Rembrandt lighting, no text, ultra realistic",
+      "portrait_16_9",
+    ),
+    imageUrl(
+      "Cinematic three-quarter vertical portrait of a cool confident young man, denim jacket, rooftop at sunset, golden backlight, hair blow in wind, no text, ultra realistic",
+      "portrait_16_9",
+    ),
+  ],
+  // Feed页动漫封面
+  animeFeedCover: animeImageUrl(
+    "Anime style vertical cover illustration for a social media feed, two anime characters chatting on balcony at sunset, soft purple orange sky, detailed line art, vibrant background, high quality, no text",
+    "portrait_16_9",
+  ),
+  // ChatRoom 对话中AI发送的图片回复
+  chatAIImage: imageUrl(
+    "Warm vertical photo of a small gift box on wooden desk, coffee cup beside it, morning window light, cozy and personal vibe, shallow depth of field, ultra realistic, no text",
+    "portrait_4_3",
+  ),
+  // 短剧故事作者头像组
+  authorAvatars: [
+    imageUrl("Square avatar portrait of a creative girl named Maya, curly hair, warm smile, clean background, realistic, high detail, no text", "square"),
+    imageUrl("Square avatar portrait of a calm young man named Noah, neat hair, gentle gaze, clean background, realistic, high detail, no text", "square"),
+    imageUrl("Square avatar portrait of a stylish woman named Ava, elegant makeup, soft lighting, clean background, realistic, high detail, no text", "square"),
+    imageUrl("Square avatar portrait of a handsome Heartbits Studio producer, friendly smile, dark blazer, neutral background, realistic, high detail, no text", "square"),
+  ],
+  // 直播主播头像组（10个）
+  liveAvatars: [
+    imageUrl("Realistic square portrait of a female live streamer named Lynn, soft makeup, ring light glow, no text", "square"),
+    imageUrl("Realistic square portrait of a male live streamer named Ryo, short dark hair, casual hoodie, no text", "square"),
+    imageUrl("Realistic square portrait of a female live streamer named Mika, dyed pink hair highlight, no text", "square"),
+    imageUrl("Realistic square portrait of a male live streamer named Noah, beard, warm smile, no text", "square"),
+    imageUrl("Realistic square portrait of a female live streamer named Ava, wavy long hair, cozy sweater, no text", "square"),
+    imageUrl("Realistic square portrait of a male live streamer named Kai, mixed race, earring, no text", "square"),
+    imageUrl("Realistic square portrait of a female live streamer named Yuna, asian girl, beret, no text", "square"),
+    imageUrl("Realistic square portrait of a male live streamer named Mason, blond curly hair, no text", "square"),
+    imageUrl("Realistic square portrait of a female live streamer named Lia, silver hair, cat ear headphones, no text", "square"),
+    imageUrl("Realistic square portrait of a male live streamer named Ethan, glasses, plaid shirt, no text", "square"),
+  ],
+  // 直播封面组（10张9:16，不同场景）
+  liveCovers: [
+    imageUrl("Live stream vertical cover, cozy bedroom, soft neon pink lights, girl talking on bed, realistic, cinematic, no text", "portrait_16_9"),
+    imageUrl("Live stream vertical cover, modern desk setup, dual monitor glow, guy gaming, RGB keyboard, realistic, no text", "portrait_16_9"),
+    imageUrl("Live stream vertical cover, city night view from window, fashion girl in front of camera, warm key light, no text", "portrait_16_9"),
+    imageUrl("Live stream vertical cover, minimal podcast studio, white backdrop, host with mic, spotlight, no text", "portrait_16_9"),
+    imageUrl("Live stream vertical cover, sunrise window light, girl writing journal, calm mood, film grain, no text", "portrait_16_9"),
+    imageUrl("Live stream vertical cover, RGB gaming room, guy in headset, purple blue led strip, no text", "portrait_16_9"),
+    imageUrl("Live stream vertical cover, warm living room, girl on couch, bokeh lamp, storytelling night vibe, no text", "portrait_16_9"),
+    imageUrl("Live stream vertical cover, clean workspace daylight, man working at laptop, productivity session, no text", "portrait_16_9"),
+    imageUrl("Live stream vertical cover, coffee shop interior, girl with latte, warm bulbs overhead, chatting, no text", "portrait_16_9"),
+    imageUrl("Live stream vertical cover, recording studio, open mic, spotlight, girl speaking into mic, no text", "portrait_16_9"),
+  ],
+};
+
+/* 6张优质的角色hero大图，按索引给 makeCharacter 默认复用 */
 const localCharacterImages = [
-  `/images/home/people.png?v=${assetVersion}`,
-  `/images/create/results/standard/hero-1.png?v=${assetVersion}`,
-  `/images/create/results/standard/hero-2.png?v=${assetVersion}`,
-  `/images/create/results/standard/hero-3.png?v=${assetVersion}`,
-  `/images/create/results/vip/candidate-1-hero.png?v=${assetVersion}`,
-  `/images/create/results/vip/candidate-2-hero.png?v=${assetVersion}`,
-  `/images/create/results/vip/candidate-3-hero.png?v=${assetVersion}`,
+  publicAssets.homePeoplePortrait,
+  publicAssets.createStandardHero[0],
+  publicAssets.createStandardHero[1],
+  publicAssets.createStandardHero[2],
+  publicAssets.createVIPHero[0],
+  publicAssets.createVIPHero[1],
+  publicAssets.createVIPHero[2],
+  publicAssets.createFixedPortrait[0],
+  publicAssets.createFixedPortrait[1],
+  publicAssets.shortsCovers[0],
+  publicAssets.shortsCovers[1],
 ];
 
 const localCharacterImageForIndex = (index) => {
@@ -381,14 +523,8 @@ export const liveHosts = Array.from({ length: 10 }, (_, i) => ({
   isLive: true,
   watching: `${(600 + i * 220).toLocaleString()}`,
   headline: liveHeadlines[i],
-  avatarUrl: imageUrl(
-    `Realistic portrait photo of a live streamer, social app avatar style, no text, person name: ${liveNames[i]}`,
-    "square",
-  ),
-  coverUrl: imageUrl(
-    `Immersive live stream preview screenshot, ${liveScenes[i]}, vertical 9:16, realistic, cinematic, no text`,
-    "portrait_16_9",
-  ),
+  avatarUrl: publicAssets.liveAvatars[i % publicAssets.liveAvatars.length],
+  coverUrl: publicAssets.liveCovers[i % publicAssets.liveCovers.length],
 }));
 
 export const shortDramas = [
@@ -400,7 +536,7 @@ export const shortDramas = [
     characterId: "c1",
     tags: ["Speaking", "Fluency", "Confidence"],
     description: "Short speaking prompts to build confidence and natural rhythm.",
-    coverUrl: "/images/create/fixed-portrait.png",
+    coverUrl: publicAssets.shortsCovers[0], // cafe small talk
     likeCount: 18320,
     favoriteCount: 4260,
   },
@@ -412,7 +548,7 @@ export const shortDramas = [
     characterId: "c2",
     tags: ["Grammar"],
     description: "One rule per clip—examples, mistakes to avoid, and quick practice.",
-    coverUrl: "/images/create/results/standard/hero-1.png",
+    coverUrl: publicAssets.shortsCovers[1], // classroom grammar
     likeCount: 12640,
     favoriteCount: 2950,
   },
@@ -424,7 +560,7 @@ export const shortDramas = [
     characterId: "c2",
     tags: ["Grammar", "Correction"],
     description: "Spot the mistake, fix it fast, and learn the rule behind it.",
-    coverUrl: "/images/create/results/vip/candidate-1-hero.png",
+    coverUrl: publicAssets.shortsCovers[1], // classroom grammar
     likeCount: 9840,
     favoriteCount: 2140,
   },
@@ -436,7 +572,7 @@ export const shortDramas = [
     characterId: "c2",
     tags: ["Writing", "Style"],
     description: "Turn stiff sentences into clean, natural English with quick rewrites.",
-    coverUrl: "/images/create/fixed-portrait-2.png",
+    coverUrl: publicAssets.createFixedPortrait[0], // sophisticated woman
     likeCount: 8820,
     favoriteCount: 1960,
   },
@@ -448,7 +584,7 @@ export const shortDramas = [
     characterId: "c3",
     tags: ["Vocabulary", "Situations"],
     description: "Bite-sized scenarios for airports, hotels, directions, and ordering food.",
-    coverUrl: "/images/create/results/vip/candidate-1-hero.png",
+    coverUrl: publicAssets.shortsCovers[2], // airport travel
     likeCount: 11670,
     favoriteCount: 2710,
   },
@@ -460,7 +596,7 @@ export const shortDramas = [
     characterId: "c4",
     tags: ["Business", "Email"],
     description: "Useful phrases for meetings, emails, and polite professional tone.",
-    coverUrl: "/images/create/results/standard/hero-1.png",
+    coverUrl: publicAssets.shortsCovers[3], // office meeting
     likeCount: 7930,
     favoriteCount: 1680,
   },
@@ -472,7 +608,7 @@ export const shortDramas = [
     characterId: "c5",
     tags: ["Listening", "Comprehension"],
     description: "Train your ear with short dialogues and quick comprehension checks.",
-    coverUrl: "/images/create/fixed-portrait.png",
+    coverUrl: publicAssets.shortsCovers[4], // headphones in park
     likeCount: 9280,
     favoriteCount: 2050,
   },
@@ -484,7 +620,7 @@ export const shortDramas = [
     characterId: "c6",
     tags: ["Pronunciation", "Accent"],
     description: "Common sounds, stress patterns, and quick mouth-position tips.",
-    coverUrl: "/images/create/fixed-portrait-2.png",
+    coverUrl: publicAssets.shortsCovers[5], // recording studio
     likeCount: 8650,
     favoriteCount: 1890,
   },
@@ -496,7 +632,7 @@ export const shortDramas = [
     characterId: "c7",
     tags: ["Words", "Usage"],
     description: "Learn high-frequency words with examples you can reuse immediately.",
-    coverUrl: "/images/create/results/standard/hero-1.png",
+    coverUrl: publicAssets.createStandardHero[1], // elegant tutor woman
     likeCount: 10240,
     favoriteCount: 2310,
   },
@@ -508,7 +644,7 @@ export const shortDramas = [
     characterId: "c8",
     tags: ["Tests", "Strategy"],
     description: "Short practice tasks for common exam question types and timing.",
-    coverUrl: "/images/create/results/vip/candidate-1-hero.png",
+    coverUrl: publicAssets.createVIPHero[1], // suit businessman
     likeCount: 7540,
     favoriteCount: 1620,
   },
@@ -520,7 +656,7 @@ export const shortDramas = [
     characterId: "c9",
     tags: ["Idioms", "Phrases"],
     description: "Understand meaning, tone, and when to use common idioms naturally.",
-    coverUrl: "/images/create/fixed-portrait.png",
+    coverUrl: publicAssets.createStandardHero[2], // sporty athletic man
     likeCount: 9410,
     favoriteCount: 2130,
   },
@@ -532,7 +668,7 @@ export const shortDramas = [
     characterId: "c10",
     tags: ["Writing", "Clarity"],
     description: "Rewrite practice: make your sentences clearer, shorter, and more natural.",
-    coverUrl: "/images/create/fixed-portrait-2.png",
+    coverUrl: publicAssets.createVIPHero[2], // artistic young woman
     likeCount: 6880,
     favoriteCount: 1490,
   },
@@ -547,7 +683,7 @@ export const shortStoryBranches = {
       title: "The question after midnight",
       prompt: "Official story opening",
       author: "Heartbits Studio",
-      authorAvatar: "/images/home/people.png",
+      authorAvatar: publicAssets.authorAvatars[3], // producer
       duration: "1:14",
       views: "18.6K",
       videoUrl: "/videos/feed/feed-01.mp4",
@@ -560,7 +696,7 @@ export const shortStoryBranches = {
       title: "Lin follows the last train",
       prompt: "Lin notices the stranger left a handwritten ticket and follows them onto the final train, where the lights suddenly go out.",
       author: "Maya",
-      authorAvatar: "/images/create/results/standard/hero-1.png",
+      authorAvatar: publicAssets.authorAvatars[0], // creative girl Maya
       duration: "1:08",
       views: "4.8K",
       videoUrl: "/videos/feed/feed-02.mp4",
@@ -572,7 +708,7 @@ export const shortStoryBranches = {
       title: "A call from an unknown number",
       prompt: "Before Lin can answer, an unknown caller reveals one detail that only his childhood friend could know.",
       author: "Noah",
-      authorAvatar: "/images/create/results/vip/candidate-1-hero.png",
+      authorAvatar: publicAssets.authorAvatars[1], // calm Noah
       duration: "1:02",
       views: "2.1K",
       videoUrl: "/videos/feed/feed-03.mp4",
@@ -584,7 +720,7 @@ export const shortStoryBranches = {
       title: "She was waiting across the street",
       prompt: "Lin looks through the cafe window and realizes the woman from his memory has been watching the entire conversation.",
       author: "Ava",
-      authorAvatar: "/images/create/fixed-portrait.png",
+      authorAvatar: publicAssets.authorAvatars[2], // stylish Ava
       duration: "1:11",
       views: "986",
       videoUrl: "/videos/feed/feed-04.mp4",
@@ -596,7 +732,7 @@ export const shortStoryBranches = {
       title: "The empty carriage",
       prompt: "The train restarts, but every passenger has disappeared except Lin and a child holding the same handwritten ticket.",
       author: "Maya",
-      authorAvatar: "/images/create/results/standard/hero-1.png",
+      authorAvatar: publicAssets.authorAvatars[0], // creative girl Maya
       duration: "1:16",
       views: "1.7K",
       videoUrl: "/videos/feed/feed-04.mp4",
@@ -608,7 +744,7 @@ export const shortStoryBranches = {
       title: "A name on the fogged window",
       prompt: "When the train tunnel fills with fog, a name appears on the window in Lin's own handwriting, even though he never touched the glass.",
       author: "Maya",
-      authorAvatar: "/images/create/results/standard/hero-1.png",
+      authorAvatar: publicAssets.authorAvatars[0], // creative girl Maya
       duration: "1:10",
       views: "1.4K",
       videoUrl: "/videos/feed/feed-01.mp4",
@@ -620,7 +756,7 @@ export const shortStoryBranches = {
       title: "The station that should not exist",
       prompt: "The train stops at a platform with no signs, no staff, and one bench where an old radio is already playing Lin's voice from tomorrow.",
       author: "Maya",
-      authorAvatar: "/images/create/results/standard/hero-1.png",
+      authorAvatar: publicAssets.authorAvatars[0], // creative girl Maya
       duration: "1:09",
       views: "1.2K",
       videoUrl: "/videos/feed/feed-02.mp4",
@@ -632,7 +768,7 @@ export const shortStoryBranches = {
       title: "He answers his own warning",
       prompt: "Lin follows the radio message to a ringing payphone and hears himself begging him not to leave the station alone.",
       author: "Maya",
-      authorAvatar: "/images/create/results/standard/hero-1.png",
+      authorAvatar: publicAssets.authorAvatars[0], // creative girl Maya
       duration: "1:13",
       views: "1.0K",
       videoUrl: "/videos/feed/feed-03.mp4",
@@ -644,7 +780,7 @@ export const shortStoryBranches = {
       title: "The child knows the ending",
       prompt: "The child from the empty carriage appears again and repeats the exact final sentence Lin has not said yet, then points toward the locked exit gate.",
       author: "Maya",
-      authorAvatar: "/images/create/results/standard/hero-1.png",
+      authorAvatar: publicAssets.authorAvatars[0], // creative girl Maya
       duration: "1:05",
       views: "938",
       videoUrl: "/videos/feed/feed-04.mp4",
@@ -656,7 +792,7 @@ export const shortStoryBranches = {
       title: "A photo from the next morning",
       prompt: "Inside the station office, Lin finds a printed photo taken tomorrow morning, showing him standing beside someone he has not met yet.",
       author: "Maya",
-      authorAvatar: "/images/create/results/standard/hero-1.png",
+      authorAvatar: publicAssets.authorAvatars[0], // creative girl Maya
       duration: "1:07",
       views: "876",
       videoUrl: "/videos/feed/feed-01.mp4",
@@ -668,7 +804,7 @@ export const shortStoryBranches = {
       title: "The platform lights go red",
       prompt: "As dawn should be breaking, every light on the platform turns red and an announcement orders Lin to choose one memory to give up.",
       author: "Maya",
-      authorAvatar: "/images/create/results/standard/hero-1.png",
+      authorAvatar: publicAssets.authorAvatars[0], // creative girl Maya
       duration: "1:12",
       views: "821",
       videoUrl: "/videos/feed/feed-02.mp4",
@@ -680,7 +816,7 @@ export const shortStoryBranches = {
       title: "The stranger finally turns around",
       prompt: "The stranger Lin has chased since episode two finally faces him, revealing the same ticket scar folded in the corner of their sleeve.",
       author: "Maya",
-      authorAvatar: "/images/create/results/standard/hero-1.png",
+      authorAvatar: publicAssets.authorAvatars[0], // creative girl Maya
       duration: "1:15",
       views: "793",
       videoUrl: "/videos/feed/feed-03.mp4",
@@ -692,7 +828,7 @@ export const shortStoryBranches = {
       title: "One question, one lost memory",
       prompt: "The stranger offers Lin one truthful answer, but every question he asks erases one piece of the night he is trying to remember.",
       author: "Maya",
-      authorAvatar: "/images/create/results/standard/hero-1.png",
+      authorAvatar: publicAssets.authorAvatars[0], // creative girl Maya
       duration: "1:08",
       views: "741",
       videoUrl: "/videos/feed/feed-04.mp4",
@@ -704,7 +840,7 @@ export const shortStoryBranches = {
       title: "The message he never sent",
       prompt: "Lin recovers an unsent voice note in his phone, and the first three seconds prove he knew this entire route before midnight began.",
       author: "Maya",
-      authorAvatar: "/images/create/results/standard/hero-1.png",
+      authorAvatar: publicAssets.authorAvatars[0], // creative girl Maya
       duration: "1:11",
       views: "688",
       videoUrl: "/videos/feed/feed-01.mp4",
@@ -716,7 +852,7 @@ export const shortStoryBranches = {
       title: "The last stop opens twice",
       prompt: "When the doors finally open at the last stop, Lin sees two versions of the same exit corridor and must choose which reality to step into.",
       author: "Maya",
-      authorAvatar: "/images/create/results/standard/hero-1.png",
+      authorAvatar: publicAssets.authorAvatars[0], // creative girl Maya
       duration: "1:06",
       views: "644",
       videoUrl: "/videos/feed/feed-02.mp4",
@@ -728,7 +864,7 @@ export const shortStoryBranches = {
       title: "She remembers him first",
       prompt: "On the other side of the corridor, Lin meets the woman from the cafe again, but this time she remembers exactly what he is about to forget.",
       author: "Maya",
-      authorAvatar: "/images/create/results/standard/hero-1.png",
+      authorAvatar: publicAssets.authorAvatars[0], // creative girl Maya
       duration: "1:14",
       views: "611",
       videoUrl: "/videos/feed/feed-03.mp4",
@@ -740,7 +876,7 @@ export const shortStoryBranches = {
       title: "The morning finally arrives",
       prompt: "Lin walks out into sunrise carrying only half the truth, while the handwritten ticket changes one final time and reveals who started the loop.",
       author: "Maya",
-      authorAvatar: "/images/create/results/standard/hero-1.png",
+      authorAvatar: publicAssets.authorAvatars[0], // creative girl Maya
       duration: "1:18",
       views: "579",
       videoUrl: "/videos/feed/feed-04.mp4",

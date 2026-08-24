@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Chrome, Mail, ShieldCheck, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Chrome, Mail, ShieldCheck } from "lucide-react";
 import Modal from "./Modal.jsx";
-import AgeGateModal from "./AgeGateModal.jsx";
+import { publicAssets } from "../data/mock.js";
 import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
 
@@ -17,10 +17,7 @@ export default function AuthModal() {
   const navigate = useNavigate();
   const login = useAppStore((s) => s.login);
   const confirmAge = useAppStore((s) => s.confirmAge);
-  const hasConfirmedAge = useAppStore((s) => s.hasConfirmedAge);
   const authOpen = useUIStore((s) => s.authOpen);
-  const authMode = useUIStore((s) => s.authMode);
-  const setAuthMode = useUIStore((s) => s.setAuthMode);
   const closeAuth = useUIStore((s) => s.closeAuth);
   const consumePostAuthPath = useUIStore((s) => s.consumePostAuthPath);
   const consumePostAuthShare = useUIStore((s) => s.consumePostAuthShare);
@@ -33,11 +30,11 @@ export default function AuthModal() {
   const [sendingCode, setSendingCode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
-  const [pendingAuth, setPendingAuth] = useState(null);
+  const [ageChecked, setAgeChecked] = useState(false);
   const toastTimer = useRef(null);
 
-  const primaryBg = `/images/home/login.png?v=${assetVersion}`;
-  const fallbackBg = `/images/home/banner3.png?v=${assetVersion}`;
+  const primaryBg = publicAssets.loginBanner;
+  const fallbackBg = publicAssets.homeBanner3;
   const [bgSrc, setBgSrc] = useState(primaryBg);
 
   const showToast = (type, message) => {
@@ -56,9 +53,9 @@ export default function AuthModal() {
     setSendingCode(false);
     setLoading(false);
     setToast(null);
-    setPendingAuth(null);
-    setBgSrc(`/images/home/login.png?v=${nextVersion}`);
-  }, [authOpen, authMode]);
+    setAgeChecked(false);
+    setBgSrc(publicAssets.loginBanner);
+  }, [authOpen]);
 
   useEffect(
     () => () => {
@@ -67,14 +64,12 @@ export default function AuthModal() {
     [],
   );
 
-  const title = useMemo(
-    () => (authMode === "login" ? "Login" : "Sign up"),
-    [authMode],
-  );
+  const title = "Login";
 
   const doLogin = async ({ displayName, email, provider }) => {
     setLoading(true);
     await new Promise((r) => setTimeout(r, 450));
+    confirmAge({ displayName, email, provider });
     login({
       displayName,
       avatarUrl: avatarFromName(displayName),
@@ -87,22 +82,6 @@ export default function AuthModal() {
     const pendingShare = consumePostAuthShare();
     if (next) navigate(next, { replace: true });
     if (pendingShare) openShare(pendingShare);
-  };
-
-  const requestLogin = async (identity) => {
-    if (hasConfirmedAge(identity)) {
-      await doLogin(identity);
-      return;
-    }
-    setPendingAuth(identity);
-  };
-
-  const onAgeConfirm = async () => {
-    if (!pendingAuth) return;
-    const identity = pendingAuth;
-    confirmAge(identity);
-    setPendingAuth(null);
-    await doLogin(identity);
   };
 
   const sendCode = async () => {
@@ -131,16 +110,15 @@ export default function AuthModal() {
       showToast("error", "Invalid code. Please try again.");
       return;
     }
+    if (!ageChecked) {
+      showToast("error", "Please confirm you are at least 18 years old.");
+      return;
+    }
     const displayName = email.includes("@") ? email.split("@")[0] : "User";
-    await requestLogin({ displayName, email: email.trim(), provider: "email" });
-  };
-
-  const switchMode = () => {
-    setAuthMode(authMode === "login" ? "register" : "login");
+    await doLogin({ displayName, email: email.trim(), provider: "email" });
   };
 
   return (
-    <>
     <Modal open={authOpen} onClose={closeAuth} title={title} className="max-w-3xl">
       <div className="relative overflow-hidden rounded-2xl">
         {toast ? (
@@ -224,7 +202,7 @@ export default function AuthModal() {
                 disabled={loading}
                 className="w-full rounded-xl bg-zinc-900 px-3 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading ? "Working…" : authMode === "login" ? "Login" : "Create account"}
+                {loading ? "Working…" : "Login"}
               </button>
 
               <div className="relative py-1">
@@ -237,59 +215,44 @@ export default function AuthModal() {
               <div className="grid grid-cols-1 gap-2">
                 <button
                   type="button"
-                  onClick={() => requestLogin({ displayName: "Google user", email: "google.user@example.com", provider: "google" })}
+                  onClick={() => {
+                    if (!ageChecked) {
+                      showToast("error", "Please confirm you are at least 18 years old.");
+                      return;
+                    }
+                    doLogin({ displayName: "Google user", email: "google.user@example.com", provider: "google" });
+                  }}
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
                 >
                   <Chrome className="h-4 w-4" />
                   Continue with Google
                 </button>
-                <button
-                  type="button"
-                  onClick={() => requestLogin({ displayName: "Discord user", email: "discord.user@example.com", provider: "discord" })}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-                >
-                  <span className="text-base">🎮</span>
-                  Continue with Discord
-                </button>
-                <button
-                  type="button"
-                  onClick={() => requestLogin({ displayName: "X user", email: "x.user@example.com", provider: "x" })}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-                >
-                  <X className="h-4 w-4" />
-                  Continue with X
-                </button>
               </div>
 
-              <div className="pt-2 text-center text-sm text-zinc-600">
-                {authMode === "login" ? (
-                  <span>
-                    Don’t have an account?{" "}
-                    <button type="button" onClick={switchMode} className="font-semibold text-zinc-900 hover:underline">
-                      Sign up
-                    </button>
-                  </span>
-                ) : (
-                  <span>
-                    Already have an account?{" "}
-                    <button type="button" onClick={switchMode} className="font-semibold text-zinc-900 hover:underline">
-                      Login
-                    </button>
-                  </span>
-                )}
-              </div>
+              <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                <input
+                  type="checkbox"
+                  checked={ageChecked}
+                  onChange={(e) => setAgeChecked(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-zinc-900"
+                />
+                <span className="text-sm leading-relaxed text-zinc-700">
+                  I confirm that I am at least 18 years old and agree to the{" "}
+                  <Link to="/terms" target="_blank" className="font-semibold text-zinc-900 underline">
+                    Terms of Service
+                  </Link>{" "}
+                  and{" "}
+                  <Link to="/privacy" target="_blank" className="font-semibold text-zinc-900 underline">
+                    Privacy Policy
+                  </Link>
+                  .
+                </span>
+              </label>
             </form>
             </div>
           </div>
         </div>
       </div>
     </Modal>
-    <AgeGateModal
-      open={Boolean(pendingAuth)}
-      mode="signup"
-      onConfirm={onAgeConfirm}
-      onCancel={() => setPendingAuth(null)}
-    />
-    </>
   );
 }

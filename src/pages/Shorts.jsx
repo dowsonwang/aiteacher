@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { characters, shortDramas } from "../data/mock.js";
 
@@ -61,9 +61,9 @@ export default function Shorts() {
             <Sparkles className="h-3.5 w-3.5 text-amber-300" />
             ORIGINAL STORY OPENINGS
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">Every Micro-Drama starts here.</h1>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">Every Playable Micro-Drama starts here.</h1>
           <p className="mt-4 max-w-xl text-sm leading-7 text-zinc-300 sm:text-base">
-            Watch the official first episode, meet the characters, and discover the moment where each Micro-Drama begins. What happens next will be up to you.
+            Watch the official first episode, meet the characters, and discover the moment where each playable micro-drama begins. What happens next will be up to you.
           </p>
         </div>
       </section>
@@ -109,7 +109,14 @@ export default function Shorts() {
                   <div className="flex min-w-0 flex-col">
                     <div className="flex flex-1 flex-col justify-between p-5">
                       <div>
-                        <h3 className="text-xl font-semibold tracking-tight text-zinc-900">{drama.title}</h3>
+                        <h3 className="text-xl font-semibold tracking-tight text-zinc-900">
+                          <Link
+                            to={`/shorts/${drama.id}/about`}
+                            className="underline-offset-4 transition hover:text-zinc-700 hover:underline"
+                          >
+                            {drama.title}
+                          </Link>
+                        </h3>
                         <p className="mt-3 line-clamp-5 text-sm leading-6 text-zinc-600">
                           {drama.description} {openingDetail}
                         </p>

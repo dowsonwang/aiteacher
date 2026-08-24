@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Play, Users } from "lucide-react";
 import { cn } from "../lib/utils.js";
+import { publicAssets } from "../data/mock.js";
 import HomeBannerCarousel from "../components/HomeBannerCarousel.jsx";
 
 const assetVersion = Date.now().toString();
@@ -64,25 +65,20 @@ const makeLiveItems = () => {
     const index = i + 1;
     const id = `l${index}`;
     const viewers = Math.floor(120_000 + index * 38_500 + (index % 3) * 7_900);
-    const coverPick = ((index - 1) % 6) + 1;
+    const coverPick = i % publicAssets.liveCovers.length;
+    const avatarPick = i % publicAssets.liveAvatars.length;
     return {
       id,
       name: names[i] || `Host ${index}`,
       headline: headlines[i] || "Live now — come hang out",
       totalViews: viewers,
-      coverCandidates: [
-        `/images/live/live-cover${coverPick}.png?v=${assetVersion}`,
-        `/images/live/cover-${String(coverPick).padStart(2, "0")}.png?v=${assetVersion}`,
-      ],
+      coverCandidates: [publicAssets.liveCovers[coverPick]],
       previewCandidates: [
         `/videos/live/preview-01.mp4?v=${assetVersion}`,
         `/images/live/preview-01.mp4?v=${assetVersion}`,
       ],
-      avatarCandidates: [
-        `/images/live/avatar-01.png?v=${assetVersion}`,
-        `/images/live/avatar-${String(index).padStart(2, "0")}.png?v=${assetVersion}`,
-      ],
-      fallbackCoverUrl: `/images/home/live-cover.png?v=${assetVersion}`,
+      avatarCandidates: [publicAssets.liveAvatars[avatarPick]],
+      fallbackCoverUrl: publicAssets.liveCover,
     };
   });
 };

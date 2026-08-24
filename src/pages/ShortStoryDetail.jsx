@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 import DiamondIcon from "../components/DiamondIcon.jsx";
 import Modal from "../components/Modal.jsx";
-import { microDramaGuideSteps, shortDramas, shortStoryBranches } from "../data/mock.js";
+import OnboardingTour from "../components/OnboardingTour.jsx";
+import { microDramaGuideSteps, publicAssets, shortDramas, shortStoryBranches } from "../data/mock.js";
 import { cn } from "../lib/utils.js";
 import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
@@ -47,7 +48,7 @@ const fallbackNodes = (drama) => [
     title: "Where the story begins",
     prompt: "Official story opening",
     author: "Heartbits Studio",
-    authorAvatar: "/images/home/people.png",
+    authorAvatar: publicAssets.authorAvatars[3],
     duration: "1:12",
     views: "8.2K",
     videoUrl: "/videos/feed/feed-01.mp4",
@@ -78,6 +79,13 @@ export default function ShortStoryDetail() {
   const [path, setPath] = useState([baseNodes[0].id]);
   const [activeEpisode, setActiveEpisode] = useState(1);
   const [storyTab, setStoryTab] = useState("episodes");
+  const [playGuidePhase, setPlayGuidePhase] = useState(null);
+  const [playGuideStepIndex, setPlayGuideStepIndex] = useState(0);
+  const [pendingGuide, setPendingGuide] = useState(null);
+  const [playGuideStage, setPlayGuideStage] = useState(0);
+  const playerGuideRef = useRef(null);
+  const continueGuideRef = useRef(null);
+  const rewriteGuideRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [prompt, setPrompt] = useState("");
   const [toast, setToast] = useState("");
@@ -92,6 +100,7 @@ export default function ShortStoryDetail() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [waitingForBranchChoice, setWaitingForBranchChoice] = useState(false);
+  const [atPathEnd, setAtPathEnd] = useState(false);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -103,6 +112,66 @@ export default function ShortStoryDetail() {
     const timer = window.setTimeout(() => setToast(""), 2200);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  useEffect(() => {
+    if (!pendingGuide) return;
+    const frame = window.requestAnimationFrame(() => {
+      setPlayGuidePhase(pendingGuide);
+      setPlayGuideStepIndex(0);
+      setPendingGuide(null);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [pendingGuide]);
+
+  useEffect(() => {
+    setPlayGuideStage(0);
+    setPlayGuidePhase(null);
+    setPlayGuideStepIndex(0);
+    setPendingGuide("intro");
+  }, [drama.id, accountKey]);
+
+  const prevGuidePhaseRef = useRef(null);
+  useEffect(() => {
+    const video = videoRef.current;
+    const prev = prevGuidePhaseRef.current;
+    prevGuidePhaseRef.current = playGuidePhase;
+    if (!video) return;
+    if (playGuidePhase === "intro") {
+      video.pause();
+      setIsPlaying(false);
+    } else if (prev === "intro" && playGuidePhase === null) {
+      video.play().then(() => setIsPlaying(true)).catch(() => {});
+    }
+  }, [playGuidePhase]);
+
+  const playGuideSteps = useMemo(() => {
+    if (playGuidePhase === "intro") {
+      return [
+        {
+          target: playerGuideRef.current,
+          title: "Watch the first episode",
+          body: "Sit back and enjoy the opening episode — immerse yourself in the characters and their world. When it ends, keep watching, or take the story into your own hands.",
+        },
+        {
+          target: continueGuideRef.current,
+          title: "Continue the story",
+          body: "Build on this episode and write what happens next. You hold the plot — and the characters' fates — in your hands.",
+          actionText: "Got it",
+        },
+      ];
+    }
+    if (playGuidePhase === "ep2") {
+      return [
+        {
+          target: rewriteGuideRef.current,
+          title: "Rewrite an episode",
+          body: "Not happy with how this episode went? Rewrite it and let the story unfold exactly the way you want.",
+          actionText: "Got it",
+        },
+      ];
+    }
+    return [];
+  }, [playGuidePhase, playGuideStepIndex]);
 
   const ownJobs = useMemo(
     () =>
@@ -122,7 +191,7 @@ export default function ShortStoryDetail() {
           parentId: job.parentNodeId,
           title: deriveGeneratedTitle(job.prompt, job.kind === "rewrite" ? "Rewrite" : "Continuation"),
           author: "You",
-          authorAvatar: "/images/home/login.png",
+          authorAvatar: publicAssets.loginBanner, // "You" 头像使用登录横幅的柔和风格图作占位
           duration: "1:09",
           views: "New",
           videoUrl: now >= job.readyAt ? "/videos/feed/feed-02.mp4" : "",
@@ -187,7 +256,7 @@ export default function ShortStoryDetail() {
   const currentNode = nodeById[currentNodeId] || rootNode || allNodes[0];
   const currentUnlocked = true;
   const progressPercent = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
-  const showPlayerControls = currentUnlocked && !waitingForBranchChoice && (playerHovered || speedMenuOpen);
+  const showPlayerControls = currentUnlocked && !waitingForBranchChoice && !atPathEnd && (playerHovered || speedMenuOpen);
   const currentPathIndex = path.findIndex((nodeId) => nodeId === currentNodeId);
   const currentPendingProgress = useMemo(() => {
     if (!currentNode?.pending) return 0;
@@ -240,28 +309,55 @@ export default function ShortStoryDetail() {
     setCreateEpisode(Math.max(2, Number(episode) || 2));
     setCreateParentNodeId(parentNodeId);
     setPrompt("");
+    setAtPathEnd(false);
     setCreateOpen(true);
   };
 
+  const finishPlayGuide = (stage) => {
+    setPlayGuideStage(stage);
+    setPlayGuidePhase(null);
+    setPlayGuideStepIndex(0);
+  };
+
+  const handlePlayGuideNext = () => {
+    if (playGuidePhase === "intro") {
+      if (playGuideStepIndex === 0) {
+        setPlayGuideStepIndex(1);
+        return;
+      }
+      finishPlayGuide(1);
+      return;
+    }
+    if (playGuidePhase === "ep2") {
+      finishPlayGuide(2);
+    }
+  };
+
+  const handlePlayGuideClose = () => {
+    if (playGuidePhase === "intro") finishPlayGuide(1);
+    else if (playGuidePhase === "ep2") finishPlayGuide(2);
+    else finishPlayGuide(playGuideStage);
+  };
+
   const advanceToNextEpisode = () => {
+    const finishedEpisode = currentNode?.episode || activeEpisode;
     const nextNodeId = currentPathIndex >= 0 ? path[currentPathIndex + 1] : "";
     const nextNode = nextNodeId ? nodeById[nextNodeId] : null;
     if (!nextNode) {
       setWaitingForBranchChoice(false);
+      setAtPathEnd(true);
       setIsPlaying(false);
       setCurrentTime(duration || 0);
-      openCreateComposer({
-        mode: "continue",
-        episode: currentNode?.episode + 1,
-        parentNodeId: currentNode?.id,
-      });
+      if (finishedEpisode === 2 && playGuideStage === 1) setPendingGuide("ep2");
       return;
     }
     allowAutoplayRef.current = false;
     setWaitingForBranchChoice(true);
+    setAtPathEnd(false);
     setIsPlaying(false);
     setCurrentNodeId(nextNode.id);
     setActiveEpisode(nextNode.episode);
+    if (finishedEpisode === 2 && playGuideStage === 1) setPendingGuide("ep2");
   };
 
   useEffect(() => {
@@ -295,6 +391,7 @@ export default function ShortStoryDetail() {
     if (currentNode?.pending) return;
     if (!currentNode?.videoUrl) return;
     if (waitingForBranchChoice) return;
+    if (playGuidePhase === "intro") return;
     if (!allowAutoplayRef.current) return;
     const video = videoRef.current;
     if (!video) return;
@@ -304,7 +401,7 @@ export default function ShortStoryDetail() {
     };
     const frame = window.requestAnimationFrame(tryPlay);
     return () => window.cancelAnimationFrame(frame);
-  }, [currentNode?.pending, currentNode?.videoUrl, currentNodeId, currentUnlocked, playbackRate, waitingForBranchChoice]);
+  }, [currentNode?.pending, currentNode?.videoUrl, currentNodeId, currentUnlocked, playbackRate, waitingForBranchChoice, playGuidePhase]);
 
   useEffect(() => {
     setCurrentTime(0);
@@ -332,6 +429,7 @@ export default function ShortStoryDetail() {
   const onSelectTheme = (node) => {
     allowAutoplayRef.current = true;
     setWaitingForBranchChoice(false);
+    setAtPathEnd(false);
     if (node.id === currentNodeId && node.videoUrl && !node.pending) {
       const video = videoRef.current;
       if (video) {
@@ -356,6 +454,7 @@ export default function ShortStoryDetail() {
     if (!node) return;
     allowAutoplayRef.current = false;
     setWaitingForBranchChoice(true);
+    setAtPathEnd(false);
     setIsPlaying(false);
     setActiveEpisode(episode);
     setCurrentNodeId(node.id);
@@ -485,6 +584,7 @@ export default function ShortStoryDetail() {
     setCurrentNodeId(globalLongestPath[0]);
     setActiveEpisode(1);
     setWaitingForBranchChoice(false);
+    setAtPathEnd(false);
     setCreateOpen(false);
   };
 
@@ -505,6 +605,7 @@ export default function ShortStoryDetail() {
       <div className="grid gap-6 xl:grid-cols-[minmax(380px,0.88fr)_minmax(520px,1.12fr)]">
         <section className="min-w-0">
           <div
+            ref={playerGuideRef}
             className="relative mx-auto aspect-[9/16] w-full max-w-[430px] overflow-hidden rounded-[32px] bg-zinc-950 shadow-[0_28px_70px_-28px_rgba(0,0,0,0.55)]"
             onMouseEnter={() => setPlayerHovered(true)}
             onMouseLeave={() => {
@@ -563,6 +664,36 @@ export default function ShortStoryDetail() {
                   </div>
                 </div>
               </div>
+            ) : atPathEnd ? (
+              <div className="relative flex h-full w-full flex-col items-center justify-center bg-zinc-950 px-6 text-white">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.10),rgba(0,0,0,0.84))]" />
+                <div className="relative w-full max-w-xs text-center">
+                  <div className="text-base font-semibold">You're at the latest episode</div>
+                  <div className="mt-2 text-sm leading-6 text-white/70">
+                    {currentNode?.episode > 1
+                      ? "Rewrite this episode, or continue the story into a new one."
+                      : "Continue the story into a new episode."}
+                  </div>
+                </div>
+                <div className="relative mt-6 flex w-full max-w-xs flex-col gap-3">
+                  {currentNode?.episode > 1 ? (
+                    <button
+                      type="button"
+                      onClick={openRewrite}
+                      className="inline-flex items-center justify-center gap-2 rounded-full bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/16"
+                    >
+                      Rewrite {formatEpisodeLabel(currentNode.episode)}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={openContinue}
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-100"
+                  >
+                    Continue {formatEpisodeLabel(currentNode.episode + 1)}
+                  </button>
+                </div>
+              </div>
             ) : (
               <video
                 key={`${currentNode.id}-${currentNode.videoUrl}`}
@@ -580,7 +711,7 @@ export default function ShortStoryDetail() {
                 onClick={togglePlay}
               />
             )}
-            {currentUnlocked && !isPlaying && !waitingForBranchChoice ? (
+            {currentUnlocked && !isPlaying && !waitingForBranchChoice && !atPathEnd ? (
               <button
                 type="button"
                 onClick={togglePlay}
@@ -590,7 +721,7 @@ export default function ShortStoryDetail() {
                 <Play className="ml-1 h-7 w-7 fill-current" />
               </button>
             ) : null}
-            {currentUnlocked ? (
+            {currentUnlocked && !atPathEnd ? (
               <>
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/55 via-black/18 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 px-4 pb-4">
@@ -717,7 +848,7 @@ export default function ShortStoryDetail() {
                     storyTab === "guide" ? "border-zinc-950 text-zinc-950" : "border-transparent text-zinc-400 hover:text-zinc-700",
                   )}
                 >
-                  How to play
+                  How to Play Micro-Dramas
                 </button>
               </div>
 
@@ -755,6 +886,7 @@ export default function ShortStoryDetail() {
                 <div className="flex flex-wrap items-center gap-2">
                   {activeEpisode === 1 ? (
                     <button
+                      ref={continueGuideRef}
                       type="button"
                       onClick={openContinue}
                       className="inline-flex items-center gap-2 rounded-full bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800"
@@ -764,6 +896,7 @@ export default function ShortStoryDetail() {
                   ) : (
                     <>
                       <button
+                        ref={rewriteGuideRef}
                         type="button"
                         onClick={openRewrite}
                         className="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-4 py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-200"
@@ -771,6 +904,7 @@ export default function ShortStoryDetail() {
                         Rewrite {formatEpisodeLabel(activeEpisode)}
                       </button>
                       <button
+                        ref={continueGuideRef}
                         type="button"
                         onClick={openContinue}
                         className="inline-flex items-center gap-2 rounded-full bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800"
@@ -930,6 +1064,14 @@ export default function ShortStoryDetail() {
           </div>
         </div>
       </Modal>
+
+      <OnboardingTour
+        open={playGuidePhase !== null && playGuideSteps.length > 0}
+        step={playGuideStepIndex}
+        steps={playGuideSteps}
+        onNext={handlePlayGuideNext}
+        onClose={handlePlayGuideClose}
+      />
     </div>
   );
 }

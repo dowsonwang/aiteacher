@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Heart, Lock, Play } from "lucide-react";
 import DiamondIcon from "../components/DiamondIcon.jsx";
 import OnboardingTour from "../components/OnboardingTour.jsx";
-import { shortDramas } from "../data/mock.js";
+import { shortDramas, publicAssets } from "../data/mock.js";
 import { useAppStore } from "../stores/useAppStore.js";
 import { useUIStore } from "../stores/useUIStore.js";
 
@@ -27,7 +27,7 @@ const ANIME_FEED_ID = "feed-anime-01";
 const ANIME_FEED_CHARACTER_ID = "c25";
 const ANIME_FEED_ASSETS = {
   video: "/videos/feed/anime/anime-feed-01.mp4",
-  cover: "/images/feed/anime/anime-feed-01-cover.png",
+  cover: publicAssets.animeFeedCover,
 };
 
 export default function Feed() {
@@ -177,7 +177,7 @@ export default function Feed() {
       return {
         id: `${activeId}-clip-${String(i + 1).padStart(2, "0")}`,
         videoSrc: isAnimeFeed ? `${ANIME_FEED_ASSETS.video}?v=${assetVersion}` : `/videos/feed/feed-0${n}.mp4?v=${assetVersion}`,
-        coverUrl: isAnimeFeed ? `${ANIME_FEED_ASSETS.cover}?v=${assetVersion}` : `/images/home/shorts-cover${n}.png?v=${assetVersion}`,
+        coverUrl: isAnimeFeed ? ANIME_FEED_ASSETS.cover : publicAssets.shortsCovers[i % publicAssets.shortsCovers.length],
         index: i + 1,
         free: i === 0,
       };
@@ -416,14 +416,14 @@ export default function Feed() {
     {
       key: "feed-main-video",
       target: mainVideoWrapRef.current,
-      title: "浏览更多视频",
-      body: "在主视频区域上下滑动，可切换查看更多精彩内容。",
+      title: "Browse more videos",
+      body: "Swipe up and down in the main video area to switch between more great content.",
     },
     {
       key: "feed-clip-list",
       target: clipListWrapRef.current,
-      title: "解锁更多内容",
-      body: "右侧为该人物的视频列表。点击锁定视频可消耗 2 💎 解锁，观看更多精彩视频。",
+      title: "Unlock more content",
+      body: "On the right is this character's video list. Tap a locked video to unlock it for 2 💎 and watch more.",
     },
   ];
 
@@ -617,7 +617,7 @@ export default function Feed() {
                             alt=""
                             className={unlocked ? "h-full w-full object-cover opacity-100 transition" : "h-full w-full object-cover opacity-70 transition"}
                             onError={(e) => {
-                              e.currentTarget.src = `/images/home/shorts-cover.png?v=${assetVersion}`;
+                              e.currentTarget.src = publicAssets.shortsCovers[0];
                             }}
                           />
                           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
@@ -748,7 +748,7 @@ export default function Feed() {
                 ) : (
                   <div className="no-scrollbar -mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
                     {characterShorts.map((d, i) => {
-                      const cover = `/images/home/shorts-cover${(i % 4) + 1}.png?v=${assetVersion}`;
+                      const cover = publicAssets.shortsCovers[i % publicAssets.shortsCovers.length];
                       return (
                         <button
                           key={d.id}
@@ -762,7 +762,7 @@ export default function Feed() {
                               alt={d.title}
                               className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
                               onError={(e) => {
-                                e.currentTarget.src = `/images/home/shorts-cover.png?v=${assetVersion}`;
+                                e.currentTarget.src = publicAssets.shortsCovers[0];
                               }}
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
