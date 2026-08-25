@@ -348,7 +348,7 @@ export default function ShortStoryDetail() {
       setAtPathEnd(true);
       setIsPlaying(false);
       setCurrentTime(duration || 0);
-      if (finishedEpisode === 2 && playGuideStage === 1) setPendingGuide("ep2");
+      if (finishedEpisode === 2 && playGuideStage < 2) setPendingGuide("ep2");
       return;
     }
     allowAutoplayRef.current = false;
@@ -357,7 +357,7 @@ export default function ShortStoryDetail() {
     setIsPlaying(false);
     setCurrentNodeId(nextNode.id);
     setActiveEpisode(nextNode.episode);
-    if (finishedEpisode === 2 && playGuideStage === 1) setPendingGuide("ep2");
+    if (finishedEpisode === 2 && playGuideStage < 2) setPendingGuide("ep2");
   };
 
   useEffect(() => {
