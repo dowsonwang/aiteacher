@@ -261,7 +261,7 @@ export default function ChatRoom() {
           </div>
         </div>
         <p className="text-xs text-zinc-500">
-          Every paid plan includes unlimited chat, 100 Diamonds/month, character images, and chat media requests.
+          Every paid plan includes unlimited chat, 100 Diamonds/month, images, videos, and interactive micro-dramas.
         </p>
       </div>
       <div className="mt-5 flex items-center justify-end gap-2">
