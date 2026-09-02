@@ -1,11 +1,15 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ChevronLeft, Clapperboard, Image as ImageIcon, Sparkles } from "lucide-react";
+import { ChevronLeft, Clapperboard, Gem, Image as ImageIcon, Sparkles } from "lucide-react";
+import DiamondIcon from "../components/DiamondIcon.jsx";
 import Modal from "../components/Modal.jsx";
 import { publicAssets } from "../data/mock.js";
 import { useAppStore } from "../stores/useAppStore.js";
+import { useUIStore } from "../stores/useUIStore.js";
 
 const recordFallbackUrl = publicAssets.chatAIImage;
+
+const assetCost = (kind) => (kind === "video" ? 10 : 2);
 
 const imageUrl = (prompt) =>
   `https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=${encodeURIComponent(
@@ -32,6 +36,9 @@ export default function CreateRecordDetail() {
 
   const characterAssets = useAppStore((s) => s.characterAssets);
   const addCharacterAsset = useAppStore((s) => s.addCharacterAsset);
+  const diamonds = useAppStore((s) => s.diamonds);
+  const spendDiamonds = useAppStore((s) => s.spendDiamonds);
+  const openDiamondUpsell = useUIStore((s) => s.openDiamondUpsell);
   const [assetPrompt, setAssetPrompt] = useState("");
   const [assetKind, setAssetKind] = useState("image");
   const [generating, setGenerating] = useState(false);
@@ -44,6 +51,19 @@ export default function CreateRecordDetail() {
   const onGenerateAsset = async () => {
     const prompt = assetPrompt.trim();
     if (!prompt || !record?.characterId) return;
+    const cost = assetCost(assetKind);
+    if (!spendDiamonds(cost)) {
+      openDiamondUpsell({
+        title: "Not enough Diamonds",
+        description:
+          assetKind === "video"
+            ? "Generating a video costs 10 Diamonds. Subscribe or buy a diamond pack in this modal."
+            : "Generating an image costs 2 Diamonds. Subscribe or buy a diamond pack in this modal.",
+        cost,
+        source: "character-asset",
+      });
+      return;
+    }
     setGenerating(true);
     await new Promise((r) => setTimeout(r, assetKind === "video" ? 1200 : 900));
     if (assetKind === "image") {
@@ -227,6 +247,10 @@ export default function CreateRecordDetail() {
                   >
                     <ImageIcon className="h-3.5 w-3.5" />
                     照片
+                    <span className="inline-flex items-center gap-0.5 opacity-80">
+                      <Gem className="h-3 w-3" />
+                      2
+                    </span>
                   </button>
                   <button
                     type="button"
@@ -239,6 +263,10 @@ export default function CreateRecordDetail() {
                   >
                     <Clapperboard className="h-3.5 w-3.5" />
                     视频
+                    <span className="inline-flex items-center gap-0.5 opacity-80">
+                      <Gem className="h-3 w-3" />
+                      10
+                    </span>
                   </button>
                 </div>
                 <button
@@ -253,7 +281,16 @@ export default function CreateRecordDetail() {
                 >
                   <Sparkles className="h-4 w-4" />
                   {generating ? "生成中…" : assetKind === "image" ? "生成照片" : "生成视频"}
+                  <span className="inline-flex items-center gap-1 opacity-80">
+                    <Gem className="h-3.5 w-3.5" />
+                    {assetCost(assetKind)}
+                  </span>
                 </button>
+              </div>
+              <div className="mt-2 flex items-center justify-end gap-1 text-xs text-zinc-500">
+                余额：
+                <DiamondIcon className="h-3.5 w-3.5" />
+                {diamonds.toLocaleString()}
               </div>
             </div>
           </div>
