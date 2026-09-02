@@ -251,20 +251,22 @@ export default function ChatRoom() {
   );
 
   const chatLimitModal = (
-    <Modal open={chatLimitOpen} onClose={() => setChatLimitOpen(false)} title="You've reached the free chat limit" className="max-w-md">
+    <Modal open={chatLimitOpen} onClose={() => setChatLimitOpen(false)} title="Keep the conversation going" className="max-w-md">
       <div className="space-y-3 text-sm text-zinc-600">
-        <p>Free users can send up to {freeChatMessageLimit} messages. Subscribe to VIP to keep chatting without limits.</p>
+        <p>You've used all {freeChatMessageLimit} free messages. Upgrade to keep chatting without limits.</p>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
           <div className="text-sm font-semibold text-amber-800">Limited-time offer</div>
           <div className="mt-1 text-sm text-amber-700">
-            Get your first month of VIP for just <span className="font-bold">$3.99</span>{" "}
-            <span className="line-through opacity-70">$9.99</span>.
+            First month <span className="font-bold">$3.99</span>. Then $9.99/month. Cancel anytime.
           </div>
         </div>
+        <p className="text-xs text-zinc-500">
+          Every paid plan includes unlimited chat, 100 Diamonds/month, character images, and chat media requests.
+        </p>
       </div>
       <div className="mt-5 flex items-center justify-end gap-2">
-        <button type="button" onClick={() => setChatLimitOpen(false)} className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50">Later</button>
-        <button type="button" onClick={() => { setChatLimitOpen(false); navigate("/subscribe"); }} className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800">Subscribe now</button>
+        <button type="button" onClick={() => setChatLimitOpen(false)} className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50">Not now</button>
+        <button type="button" onClick={() => { setChatLimitOpen(false); navigate("/subscribe"); }} className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800">Keep chatting for $3.99</button>
       </div>
     </Modal>
   );
