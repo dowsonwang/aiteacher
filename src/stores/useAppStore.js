@@ -72,6 +72,9 @@ export const useAppStore = create(
       unlockedShortNodes: {},
       shortContinuationJobs: [],
       unlockedFeedVideos: {},
+      feedCategory: "all",
+      feedCategoryChosen: false,
+      characterAssets: {},
       favoriteShorts: ["s1", "s2"],
       likedShorts: [],
       favoriteLiveHosts: ["l1"],
@@ -380,6 +383,29 @@ export const useAppStore = create(
         return { ok: true, alreadyUnlocked: false, cost: price };
       },
 
+      setFeedCategory: (category) =>
+        set(() => ({
+          feedCategory: category === "female" || category === "male" || category === "anime" ? category : "all",
+          feedCategoryChosen: true,
+        })),
+
+      addCharacterAsset: ({ characterId, kind = "image", url = "", prompt = "" } = {}) => {
+        const id = `${characterId || ""}`;
+        if (!id) return null;
+        const asset = {
+          id: `asset_${generateId()}`,
+          kind: kind === "video" ? "video" : "image",
+          url,
+          prompt: `${prompt || ""}`.trim(),
+          createdAt: Date.now(),
+        };
+        set((state) => {
+          const current = state.characterAssets || {};
+          return { characterAssets: { ...current, [id]: [asset, ...(current[id] || [])] } };
+        });
+        return asset;
+      },
+
       toggleFavoriteShort: (dramaId) =>
         set((state) => {
           const id = `${dramaId || ""}`;
@@ -550,6 +576,9 @@ export const useAppStore = create(
             favoriteCharacters: characterId
               ? (Array.isArray(state.favoriteCharacters) ? state.favoriteCharacters : []).filter((cid) => cid !== characterId)
               : state.favoriteCharacters,
+            characterAssets: characterId
+              ? Object.fromEntries(Object.entries(state.characterAssets || {}).filter(([key]) => key !== characterId))
+              : state.characterAssets,
           };
         }),
 
@@ -658,6 +687,9 @@ export const useAppStore = create(
         unlockedShortNodes: state.unlockedShortNodes,
         shortContinuationJobs: state.shortContinuationJobs,
         unlockedFeedVideos: state.unlockedFeedVideos,
+        feedCategory: state.feedCategory,
+        feedCategoryChosen: state.feedCategoryChosen,
+        characterAssets: state.characterAssets,
         favoriteShorts: state.favoriteShorts,
         likedShorts: state.likedShorts,
         favoriteLiveHosts: state.favoriteLiveHosts,

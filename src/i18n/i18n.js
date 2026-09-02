@@ -45,6 +45,7 @@ const dictionaries = {
     chat_tab_profile: "Profile",
     chat_tab_story: "Story",
     chat_tab_shorts: "Micro-Dramas",
+    chat_tab_moments: "Moments",
     chat_enter_live: "Enter Live",
     chat_story_title: "Worldbook",
     chat_short_list_title: "Featured Micro-Dramas",

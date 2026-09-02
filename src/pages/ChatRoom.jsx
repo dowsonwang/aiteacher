@@ -23,6 +23,7 @@ import { shortDramas, publicAssets } from "../data/mock.js";
 
 const requestImageCost = 1;
 const requestVideoCost = 2;
+const freeChatMessageLimit = 10;
 
 const buildAssistantReply = ({ characterName, userText }) => {
   const text = userText.trim();
@@ -94,6 +95,7 @@ export default function ChatRoom() {
   const getMediaRequestSummary = useAppStore((s) => s.getMediaRequestSummary);
   const favoriteCharacters = useAppStore((s) => s.favoriteCharacters);
   const toggleFavoriteCharacter = useAppStore((s) => s.toggleFavoriteCharacter);
+  const characterAssets = useAppStore((s) => s.characterAssets);
 
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
@@ -135,6 +137,17 @@ export default function ChatRoom() {
   const quota = useMemo(() => getMediaRequestSummary({ freeLimit: freeMediaLimit }), [getMediaRequestSummary, freeMediaLimit, mediaRequests]);
   const [freeExhaustedOpen, setFreeExhaustedOpen] = useState(false);
 
+  const totalUserMessages = useMemo(
+    () =>
+      conversations.reduce(
+        (sum, c) => sum + (Array.isArray(c.messages) ? c.messages.filter((m) => m.role === "user").length : 0),
+        0,
+      ),
+    [conversations],
+  );
+  const chatLimitReached = !isSubscribed && totalUserMessages >= freeChatMessageLimit;
+  const [chatLimitOpen, setChatLimitOpen] = useState(false);
+
   const [mediaOpen, setMediaOpen] = useState(false);
   const [mediaItem, setMediaItem] = useState(null);
   const messagesRef = useRef(null);
@@ -161,6 +174,10 @@ export default function ChatRoom() {
     if (!session.isLoggedIn) {
       pendingMessageRef.current = { text: clean, attachments };
       openAuth({ mode: "login", postAuthPath: `/chat/${conversation.id}` });
+      return;
+    }
+    if (chatLimitReached) {
+      setChatLimitOpen(true);
       return;
     }
     setInput("");
@@ -233,6 +250,25 @@ export default function ChatRoom() {
     </Modal>
   );
 
+  const chatLimitModal = (
+    <Modal open={chatLimitOpen} onClose={() => setChatLimitOpen(false)} title="You've reached the free chat limit" className="max-w-md">
+      <div className="space-y-3 text-sm text-zinc-600">
+        <p>Free users can send up to {freeChatMessageLimit} messages. Subscribe to VIP to keep chatting without limits.</p>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <div className="text-sm font-semibold text-amber-800">Limited-time offer</div>
+          <div className="mt-1 text-sm text-amber-700">
+            Get your first month of VIP for just <span className="font-bold">$3.99</span>{" "}
+            <span className="line-through opacity-70">$9.99</span>.
+          </div>
+        </div>
+      </div>
+      <div className="mt-5 flex items-center justify-end gap-2">
+        <button type="button" onClick={() => setChatLimitOpen(false)} className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50">Later</button>
+        <button type="button" onClick={() => { setChatLimitOpen(false); navigate("/subscribe"); }} className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800">Subscribe now</button>
+      </div>
+    </Modal>
+  );
+
   const panelBlocks = useMemo(() => (character ? pickProfileBlocks(character) : []), [character]);
   const isFavorited = useMemo(
     () => (Array.isArray(favoriteCharacters) ? favoriteCharacters.includes(character?.id) : false),
@@ -244,6 +280,17 @@ export default function ChatRoom() {
     const matchedShorts = shortDramas.filter((x) => x.protagonist === character.name);
     return matchedShorts.length ? matchedShorts.slice(0, 6) : shortDramas.slice(0, 6);
   }, [character?.name]);
+
+  const isUserCreated = Boolean(character?.ownerKey);
+  const isAnimeCharacter = character?.kind === "anime";
+  const moments = useMemo(() => {
+    if (!isUserCreated || !character?.id) return [];
+    return characterAssets?.[character.id] || [];
+  }, [characterAssets, character?.id, isUserCreated]);
+
+  useEffect(() => {
+    if (panelTab === "moments" && !isUserCreated) setPanelTab("profile");
+  }, [panelTab, isUserCreated]);
 
   const profileFallbackSrc = publicAssets.createStandardHero[0];
   const [profileImgSrc, setProfileImgSrc] = useState(
@@ -271,8 +318,7 @@ export default function ChatRoom() {
     const canShow = typeof window !== "undefined" && window.matchMedia?.("(min-width: 1024px)")?.matches;
     if (!canShow) return;
     hasOpenedTourRef.current = true;
-    const raf = window.requestAnimationFrame(() => setTourOpen(true));
-    return () => window.cancelAnimationFrame(raf);
+    setTourOpen(true);
   }, [character, conversation]);
 
   useEffect(() => {
@@ -280,6 +326,10 @@ export default function ChatRoom() {
     const pending = pendingMessageRef.current;
     if (!pending) return;
     pendingMessageRef.current = null;
+    if (chatLimitReached) {
+      setChatLimitOpen(true);
+      return;
+    }
     setInput("");
     sendMessage({ conversationId: conversation.id, text: pending.text, attachments: pending.attachments });
     setTyping(true);
@@ -290,7 +340,7 @@ export default function ChatRoom() {
       });
       setTyping(false);
     }, 550);
-  }, [session.isLoggedIn, conversation, character, sendMessage, replyAsAssistant]);
+  }, [session.isLoggedIn, conversation, character, chatLimitReached, sendMessage, replyAsAssistant]);
 
   if (!conversation || !character) {
     return <div className="flex h-full items-center justify-center text-sm text-zinc-500">{t(language, "chat_not_found")}</div>;
@@ -305,8 +355,10 @@ export default function ChatRoom() {
           {
             key: "chat-requests",
             target: requestButtonsRef.current,
-            title: "Request image and video",
-            body: "Request an image or video from the AI character during the conversation.",
+            title: isAnimeCharacter ? "Request image" : "Request image and video",
+            body: isAnimeCharacter
+              ? "Request an image from the AI character during the conversation."
+              : "Request an image or video from the AI character during the conversation.",
           },
         ]}
         onClose={() => setTourOpen(false)}
@@ -365,6 +417,8 @@ export default function ChatRoom() {
       </Modal>
 
       {freeRequestsModal}
+
+      {chatLimitModal}
 
       <div className="flex h-full min-h-0 flex-col lg:border-r lg:border-zinc-200">
         <div className="flex items-start justify-between gap-3 border-b border-zinc-200 px-5 py-4">
@@ -538,18 +592,20 @@ export default function ChatRoom() {
                 {requestImageCost}
               </span>
             </button>
-            <button
-              type="button"
-              onClick={() => requestMedia("video")}
-              className="inline-flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 hover:bg-zinc-50"
-            >
-              <VideoIcon className="h-4 w-4" />
-              {t(language, "chat_request_video")}
-              <span className="inline-flex items-center gap-1 text-zinc-700">
-                <Gem className="h-3.5 w-3.5" />
-                {requestVideoCost}
-              </span>
-            </button>
+            {!isAnimeCharacter ? (
+              <button
+                type="button"
+                onClick={() => requestMedia("video")}
+                className="inline-flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 hover:bg-zinc-50"
+              >
+                <VideoIcon className="h-4 w-4" />
+                {t(language, "chat_request_video")}
+                <span className="inline-flex items-center gap-1 text-zinc-700">
+                  <Gem className="h-3.5 w-3.5" />
+                  {requestVideoCost}
+                </span>
+              </button>
+            ) : null}
           </div>
 
           <div className="mt-3 flex items-center gap-2">
@@ -604,6 +660,20 @@ export default function ChatRoom() {
           >
             {t(language, "chat_tab_shorts")}
           </button>
+          {isUserCreated ? (
+            <button
+              type="button"
+              onClick={() => setPanelTab("moments")}
+              className={cn(
+                "border-b-2 pb-2 text-xs font-semibold",
+                panelTab === "moments"
+                  ? "border-zinc-900 text-zinc-900"
+                  : "border-transparent text-zinc-400 hover:text-zinc-700",
+              )}
+            >
+              {t(language, "chat_tab_moments")}
+            </button>
+          ) : null}
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto px-5 py-4">
@@ -703,6 +773,33 @@ export default function ChatRoom() {
                   </div>
                 </div>
               </>
+            ) : panelTab === "moments" ? (
+              <div className="p-4">
+                <div className="text-sm font-semibold text-zinc-900">{t(language, "chat_tab_moments")}</div>
+                {moments.length ? (
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    {moments.map((a) => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => openMedia({ kind: a.kind, src: a.url, fallbackUrl: null })}
+                        className="aspect-[9/16] overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100"
+                      >
+                        {a.kind === "image" ? (
+                          <img src={a.url} alt={a.prompt} className="h-full w-full object-cover" />
+                        ) : (
+                          <video src={a.url} muted loop playsInline autoPlay className="h-full w-full bg-black object-cover" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-3 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-center">
+                    <div className="text-sm font-semibold text-zinc-700">No moments yet</div>
+                    <div className="mt-1 text-xs text-zinc-500">Generate photos and videos for this character from the Create page.</div>
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="p-4">
                 <div className="flex items-center justify-between gap-3">

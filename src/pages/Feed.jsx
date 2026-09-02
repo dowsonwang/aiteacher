@@ -30,6 +30,13 @@ const ANIME_FEED_ASSETS = {
   cover: publicAssets.animeFeedCover,
 };
 
+const FEED_CATEGORIES = [
+  { key: "all", label: "All" },
+  { key: "female", label: "Female" },
+  { key: "male", label: "Male" },
+  { key: "anime", label: "Anime" },
+];
+
 export default function Feed() {
   const navigate = useNavigate();
   const session = useAppStore((s) => s.session);
@@ -44,11 +51,9 @@ export default function Feed() {
   const unlockFeedVideo = useAppStore((s) => s.unlockFeedVideo);
 
   const characters = getAllCharacters();
-  const baseCharacters = useMemo(() => characters.slice(0, 4), [characters]);
 
   const assetVersion = useMemo(() => Date.now().toString(), []);
-  const items = useMemo(() => {
-    const safeCharId = (i) => baseCharacters[i]?.id;
+  const allItems = useMemo(() => {
     return [
       {
         id: "feed-01",
@@ -56,7 +61,7 @@ export default function Feed() {
         username: "@aurora",
         caption: "Pronunciation warm-up: shadow this sentence and copy the rhythm.",
         tags: ["#english", "#speaking"],
-        characterId: safeCharId(0),
+        characterId: "c1",
         hasShorts: false,
         shortId: null,
         likeCount: 12400,
@@ -70,7 +75,7 @@ export default function Feed() {
         username: "@nox",
         caption: "Learn 5 travel phrases you can use today—then practice with me.",
         tags: ["#english", "#travel"],
-        characterId: safeCharId(1),
+        characterId: "c2",
         hasShorts: true,
         shortId: "s2",
         likeCount: 8300,
@@ -82,7 +87,7 @@ export default function Feed() {
         username: "@mika",
         caption: "Mini grammar fix: present perfect vs past simple in one minute.",
         tags: ["#english", "#grammar"],
-        characterId: safeCharId(2),
+        characterId: "c3",
         hasShorts: true,
         shortId: "s3",
         likeCount: 15600,
@@ -94,11 +99,59 @@ export default function Feed() {
         username: "@echo",
         caption: "Listening drill: can you catch the key word in this short line?",
         tags: ["#english", "#listening"],
-        characterId: safeCharId(3),
+        characterId: "c4",
         hasShorts: false,
         shortId: null,
         likeCount: 4200,
         shareCount: 66,
+      },
+      {
+        id: "feed-05",
+        videoSrc: `/videos/feed/feed-01.mp4?v=${assetVersion}`,
+        username: "@ivy",
+        caption: "Small talk starter: three easy ways to open a conversation.",
+        tags: ["#english", "#smalltalk"],
+        characterId: "c5",
+        hasShorts: false,
+        shortId: null,
+        likeCount: 5100,
+        shareCount: 74,
+      },
+      {
+        id: "feed-06",
+        videoSrc: `/videos/feed/feed-02.mp4?v=${assetVersion}`,
+        username: "@rex",
+        caption: "Workplace English: nail your next self-introduction in 60 seconds.",
+        tags: ["#english", "#work"],
+        characterId: "c6",
+        hasShorts: false,
+        shortId: null,
+        likeCount: 6900,
+        shareCount: 98,
+      },
+      {
+        id: "feed-07",
+        videoSrc: `/videos/feed/feed-03.mp4?v=${assetVersion}`,
+        username: "@nora",
+        caption: "Vocabulary boost: 4 phrases to sound more natural today.",
+        tags: ["#english", "#vocabulary"],
+        characterId: "c7",
+        hasShorts: false,
+        shortId: null,
+        likeCount: 7800,
+        shareCount: 120,
+      },
+      {
+        id: "feed-08",
+        videoSrc: `/videos/feed/feed-04.mp4?v=${assetVersion}`,
+        username: "@leo",
+        caption: "Interview practice: answer 'tell me about yourself' with confidence.",
+        tags: ["#english", "#interview"],
+        characterId: "c8",
+        hasShorts: false,
+        shortId: null,
+        likeCount: 9300,
+        shareCount: 156,
       },
       {
         id: ANIME_FEED_ID,
@@ -112,8 +165,55 @@ export default function Feed() {
         likeCount: 6800,
         shareCount: 92,
       },
-    ].filter((x) => x.characterId);
-  }, [assetVersion, baseCharacters]);
+      {
+        id: "feed-anime-02",
+        videoSrc: `${ANIME_FEED_ASSETS.video}?v=${assetVersion}`,
+        username: "@hana",
+        caption: "Anime café role-play: order, chat, and learn cozy phrases with Hana.",
+        tags: ["#anime", "#roleplay"],
+        characterId: "c26",
+        hasShorts: false,
+        shortId: null,
+        likeCount: 5400,
+        shareCount: 81,
+      },
+      {
+        id: "feed-anime-03",
+        videoSrc: `${ANIME_FEED_ASSETS.video}?v=${assetVersion}`,
+        username: "@ren",
+        caption: "Anime shadowing: copy Ren's rhythm and stress, line by line.",
+        tags: ["#anime", "#speaking"],
+        characterId: "c27",
+        hasShorts: false,
+        shortId: null,
+        likeCount: 4700,
+        shareCount: 63,
+      },
+    ].filter((x) => characters.some((c) => c.id === x.characterId));
+  }, [assetVersion, characters]);
+
+  const feedCategory = useAppStore((s) => s.feedCategory);
+  const feedCategoryChosen = useAppStore((s) => s.feedCategoryChosen);
+  const setFeedCategory = useAppStore((s) => s.setFeedCategory);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  useEffect(() => {
+    if (!feedCategoryChosen) setPickerOpen(true);
+  }, [feedCategoryChosen]);
+
+  const items = useMemo(() => {
+    if (feedCategory === "all") return allItems;
+    return allItems.filter((x) => {
+      const ch = characters.find((c) => c.id === x.characterId);
+      return ch?.kind === feedCategory;
+    });
+  }, [allItems, characters, feedCategory]);
+
+  const stepCategory = (dir) => {
+    const idx = FEED_CATEGORIES.findIndex((c) => c.key === feedCategory);
+    const nextIdx = (idx + dir + FEED_CATEGORIES.length) % FEED_CATEGORIES.length;
+    setFeedCategory(FEED_CATEGORIES[nextIdx].key);
+  };
 
   const [index, setIndex] = useState(0);
   const wheelLock = useRef(false);
@@ -141,9 +241,10 @@ export default function Feed() {
   useEffect(() => {
     const canShow = typeof window !== "undefined" && window.matchMedia?.("(min-width: 1024px)")?.matches;
     if (!canShow) return;
+    if (!feedCategoryChosen) return;
     const raf = requestAnimationFrame(() => setTourOpen(true));
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [feedCategoryChosen]);
 
   const [activeTab, setActiveTab] = useState("character");
   const [liked, setLiked] = useState(false);
@@ -203,6 +304,11 @@ export default function Feed() {
       if (!items.length) return v;
       return (v - 1 + items.length) % items.length;
     });
+
+  useEffect(() => {
+    if (!items.length) return;
+    setIndex(0);
+  }, [feedCategory]);
 
   useEffect(() => {
     if (!items.length) return;
@@ -285,7 +391,8 @@ export default function Feed() {
     e.stopPropagation();
     if (wheelLock.current) return;
 
-    wheelDelta.current += e.deltaY;
+    const isHorizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+    wheelDelta.current += isHorizontal ? e.deltaX : e.deltaY;
     const threshold = 80;
     if (Math.abs(wheelDelta.current) < threshold) return;
 
@@ -295,8 +402,27 @@ export default function Feed() {
       wheelDelta.current = 0;
     }, 650);
 
+    if (isHorizontal) {
+      if (wheelDelta.current > 0) stepCategory(1);
+      else stepCategory(-1);
+      return;
+    }
     if (wheelDelta.current > 0) next();
     else prev();
+  };
+
+  const touchStart = useRef(null);
+  const onTouchStart = (e) => {
+    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  };
+  const onTouchEnd = (e) => {
+    if (!touchStart.current) return;
+    const dx = e.changedTouches[0].clientX - touchStart.current.x;
+    const dy = e.changedTouches[0].clientY - touchStart.current.y;
+    touchStart.current = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+      stepCategory(dx < 0 ? 1 : -1);
+    }
   };
 
   useEffect(() => {
@@ -445,11 +571,32 @@ export default function Feed() {
       />
 
       <div className="h-full min-h-0 grid grid-cols-1 gap-0 lg:grid-cols-[minmax(0,1fr)_420px]">
-        <section className="relative h-full min-h-0">
-          <div className="flex h-full min-h-0 items-stretch justify-center gap-4 px-6 py-6">
+        <section className="relative flex h-full min-h-0 flex-col">
+          <div className="flex items-center justify-center gap-7 px-6 pt-4">
+            {FEED_CATEGORIES.map((c) => (
+              <button
+                key={c.key}
+                type="button"
+                onClick={() => setFeedCategory(c.key)}
+                className={
+                  feedCategory === c.key
+                    ? "relative pb-1.5 text-sm font-semibold text-white"
+                    : "relative pb-1.5 text-sm font-semibold text-white/50 hover:text-white/80"
+                }
+              >
+                {c.label}
+                {feedCategory === c.key ? (
+                  <span className="absolute bottom-0 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full bg-white" />
+                ) : null}
+              </button>
+            ))}
+          </div>
+          <div className="flex min-h-0 flex-1 items-stretch justify-center gap-4 px-6 py-4">
             <div
               ref={mainVideoWrapRef}
               onWheel={onVideoWheel}
+              onTouchStart={onTouchStart}
+              onTouchEnd={onTouchEnd}
               onClick={() => togglePlay()}
               className={
                 videoVisible
@@ -846,6 +993,30 @@ export default function Feed() {
           </div>
         </section>
       </div>
+
+      {pickerOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md">
+          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-zinc-900 p-6 shadow-2xl">
+            <div className="text-lg font-semibold text-white">What would you like to watch?</div>
+            <div className="mt-1 text-sm text-white/60">Pick a category to start browsing. You can switch anytime from the tabs above or by swiping sideways on the video.</div>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              {FEED_CATEGORIES.map((c) => (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => {
+                    setFeedCategory(c.key);
+                    setPickerOpen(false);
+                  }}
+                  className="rounded-2xl border border-white/15 bg-white/5 px-4 py-4 text-sm font-semibold text-white hover:border-white/35 hover:bg-white/10"
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {toast ? (
         <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-2xl border border-white/10 bg-zinc-900/90 px-4 py-3 text-sm font-semibold text-white shadow-2xl backdrop-blur">

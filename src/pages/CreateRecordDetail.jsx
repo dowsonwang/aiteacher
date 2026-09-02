@@ -1,11 +1,20 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Clapperboard, Image as ImageIcon, Sparkles } from "lucide-react";
 import Modal from "../components/Modal.jsx";
 import { publicAssets } from "../data/mock.js";
 import { useAppStore } from "../stores/useAppStore.js";
 
 const recordFallbackUrl = publicAssets.chatAIImage;
+
+const imageUrl = (prompt) =>
+  `https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=${encodeURIComponent(
+    `${prompt}, cinematic portrait, consistent character, high quality, no text`,
+  )}&image_size=portrait_16_9`;
+
+const demoVideos = ["/videos/characters/demo-1.mp4", "/videos/characters/demo-2.mp4", "/videos/characters/demo-3.mp4"];
+
+const inspirationIdeas = ["雨天的咖啡馆", "海边日落", "夜晚霓虹街头", "雪后的清晨", "演唱会现场", "公路旅行"];
 
 export default function CreateRecordDetail() {
   const navigate = useNavigate();
@@ -20,6 +29,32 @@ export default function CreateRecordDetail() {
     return list.find((r) => r.id === id);
   }, [characterCreations, id]);
   const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const characterAssets = useAppStore((s) => s.characterAssets);
+  const addCharacterAsset = useAppStore((s) => s.addCharacterAsset);
+  const [assetPrompt, setAssetPrompt] = useState("");
+  const [assetKind, setAssetKind] = useState("image");
+  const [generating, setGenerating] = useState(false);
+
+  const assets = useMemo(() => {
+    const cid = record?.characterId;
+    return cid ? characterAssets?.[cid] || [] : [];
+  }, [characterAssets, record?.characterId]);
+
+  const onGenerateAsset = async () => {
+    const prompt = assetPrompt.trim();
+    if (!prompt || !record?.characterId) return;
+    setGenerating(true);
+    await new Promise((r) => setTimeout(r, assetKind === "video" ? 1200 : 900));
+    if (assetKind === "image") {
+      addCharacterAsset({ characterId: record.characterId, kind: "image", url: imageUrl(prompt), prompt });
+    } else {
+      const url = demoVideos[Math.floor(Math.random() * demoVideos.length)];
+      addCharacterAsset({ characterId: record.characterId, kind: "video", url, prompt });
+    }
+    setAssetPrompt("");
+    setGenerating(false);
+  };
 
   if (!record) {
     return (
@@ -142,6 +177,106 @@ export default function CreateRecordDetail() {
             ))}
           </div>
         </div>
+      </div>
+
+      <div className="mt-6 rounded-[28px] border border-zinc-200 bg-white p-5">
+        <div className="flex items-baseline justify-between gap-3">
+          <div className="text-sm font-semibold text-zinc-900">角色资产</div>
+          <div className="text-xs text-zinc-500">TA 的生活瞬间，由你亲手生成</div>
+        </div>
+
+        <div className="mt-4 rounded-3xl border border-zinc-200 bg-zinc-50 p-4">
+          <div className="flex items-start gap-3">
+            <img
+              src={record.portraitUrl || recordFallbackUrl}
+              alt=""
+              className="h-10 w-10 rounded-full border border-zinc-200 object-cover"
+            />
+            <div className="min-w-0 flex-1">
+              <input
+                value={assetPrompt}
+                onChange={(e) => setAssetPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") onGenerateAsset();
+                }}
+                placeholder={`给 ${record.appearance?.name || "TA"} 描述一个场景，比如「雨天的咖啡馆」…`}
+                className="h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-zinc-400"
+              />
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {inspirationIdeas.map((idea) => (
+                  <button
+                    key={idea}
+                    type="button"
+                    onClick={() => setAssetPrompt(idea)}
+                    className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-zinc-600 hover:border-zinc-400 hover:text-zinc-900"
+                  >
+                    {idea}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAssetKind("image")}
+                    className={
+                      assetKind === "image"
+                        ? "inline-flex items-center gap-1.5 rounded-xl bg-zinc-900 px-3 py-2 text-xs font-semibold text-white"
+                        : "inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100"
+                    }
+                  >
+                    <ImageIcon className="h-3.5 w-3.5" />
+                    照片
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAssetKind("video")}
+                    className={
+                      assetKind === "video"
+                        ? "inline-flex items-center gap-1.5 rounded-xl bg-zinc-900 px-3 py-2 text-xs font-semibold text-white"
+                        : "inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100"
+                    }
+                  >
+                    <Clapperboard className="h-3.5 w-3.5" />
+                    视频
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  disabled={!assetPrompt.trim() || generating}
+                  onClick={onGenerateAsset}
+                  className={
+                    assetPrompt.trim() && !generating
+                      ? "inline-flex items-center gap-2 rounded-2xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800"
+                      : "inline-flex items-center gap-2 rounded-2xl bg-zinc-200 px-4 py-2.5 text-sm font-semibold text-zinc-500"
+                  }
+                >
+                  <Sparkles className="h-4 w-4" />
+                  {generating ? "生成中…" : assetKind === "image" ? "生成照片" : "生成视频"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {assets.length ? (
+          <div className="mt-5 grid grid-cols-3 gap-3 sm:grid-cols-4">
+            {assets.map((a) => (
+              <div key={a.id} className="aspect-[9/16] overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100">
+                {a.kind === "image" ? (
+                  <img src={a.url} alt={a.prompt} className="h-full w-full object-cover" onError={(e) => { e.currentTarget.src = recordFallbackUrl; }} />
+                ) : (
+                  <video src={a.url} muted loop playsInline autoPlay className="h-full w-full bg-black object-cover" />
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-5 rounded-3xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-10 text-center">
+            <div className="text-sm font-semibold text-zinc-700">还没有任何瞬间</div>
+            <div className="mt-1 text-xs text-zinc-500">写下第一个场景，为 TA 生成一张照片或一段视频吧。</div>
+          </div>
+        )}
       </div>
 
       <Modal open={deleteOpen} onClose={() => setDeleteOpen(false)} title="确认删除角色？">

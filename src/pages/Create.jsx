@@ -262,6 +262,7 @@ export default function Create() {
   const [characterIdea, setCharacterIdea] = useState("");
   const [texts, setTexts] = useState({ relation: "", scenario: "", firstMessage: "", example: "" });
   const [leavePromptOpen, setLeavePromptOpen] = useState(false);
+  const [assetGuideOpen, setAssetGuideOpen] = useState(false);
   const [manualLeaveIntent, setManualLeaveIntent] = useState("");
   const skipAutoResumeRef = useRef(false);
   const [openGroup, setOpenGroup] = useState("gender");
@@ -632,6 +633,7 @@ export default function Create() {
       return;
     }
     showToast("success", "人物已创建");
+    setAssetGuideOpen(true);
   };
 
   const onStartChat = () => {
@@ -1646,6 +1648,44 @@ export default function Create() {
       {toast ? (
         <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-2xl border border-white/10 bg-zinc-900/90 px-4 py-3 text-sm font-semibold text-white shadow-2xl backdrop-blur">
           {toast.message}
+        </div>
+      ) : null}
+
+      {assetGuideOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-md">
+          <div className="w-full max-w-sm overflow-hidden rounded-[28px] bg-white shadow-2xl">
+            <div className="relative bg-gradient-to-br from-violet-500 via-fuchsia-500 to-rose-400 px-6 pb-12 pt-8 text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur">
+                <Sparkles className="h-7 w-7" />
+              </div>
+              <div className="mt-4 text-lg font-semibold text-white drop-shadow">{name || "你的人物"}诞生啦</div>
+            </div>
+            <div className="-mt-6 rounded-t-[24px] bg-white px-6 pb-6 pt-6">
+              <div className="text-center text-sm leading-6 text-zinc-600">
+                TA 还缺一些「生活瞬间」——为 TA 生成照片和视频，写一句话描述场景就行。
+              </div>
+              <div className="mt-5 grid grid-cols-1 gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAssetGuideOpen(false);
+                    navigate(`/create/record/${record?.id}`);
+                  }}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  去创造角色资产
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAssetGuideOpen(false)}
+                  className="inline-flex items-center justify-center rounded-2xl px-4 py-2 text-sm font-semibold text-zinc-500 hover:bg-zinc-50"
+                >
+                  先看看 TA
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
 

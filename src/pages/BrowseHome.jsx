@@ -46,7 +46,7 @@ const categoryContent = {
   female: {
     title: "Meet female AI characters with personality and presence.",
     description:
-      "Browse realistic female characters created for conversation, roleplay, and character-led stories. Each card opens directly into a chat with a distinct persona.",
+      "From warm confidants to fearless adventurers, every character has her own voice and story. Find the one who truly gets you — and let the conversation begin.",
     faqSubtitle: "Common questions about female AI characters.",
     faqItems: [
       {
@@ -73,7 +73,7 @@ const categoryContent = {
   male: {
     title: "Meet male AI characters built for conversation and story.",
     description:
-      "Discover realistic male characters with different moods, backgrounds, and chat styles. Open a card to begin a conversation or follow a character-driven story.",
+      "Charming, mysterious, or effortlessly funny — every character brings his own world to the conversation. Pick a voice that fits your mood and see where the story takes you.",
     faqSubtitle: "Common questions about male AI characters.",
     faqItems: [
       {
@@ -100,7 +100,7 @@ const categoryContent = {
   anime: {
     title: "Meet anime AI characters with expressive worlds and style.",
     description:
-      "Browse anime-inspired AI characters with illustrated portraits, vivid personalities, and the same chat interactions as realistic characters. Anime cards do not display age.",
+      "Step into vivid illustrated worlds full of color, style, and imagination. Meet one-of-a-kind anime personas ready to chat, adventure, and build stories with you.",
     faqSubtitle: "Common questions about anime AI characters.",
     faqItems: [
       {

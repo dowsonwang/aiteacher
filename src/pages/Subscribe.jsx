@@ -23,7 +23,7 @@ export default function Subscribe() {
     () => [
       {
         q: "What do I get with subscription?",
-        a: "Text chat is already free for everyone. A paid plan unlocks premium features. Some actions use Diamonds, such as character images, chat media, short drama creation, and Discover unlocks.",
+        a: "Free users can send up to 10 chat messages. A paid plan unlocks unlimited text chat plus premium features. Some actions use Diamonds, such as character images, chat media, short drama creation, and Discover unlocks.",
       },
       {
         q: "How are Diamonds issued?",
@@ -39,7 +39,7 @@ export default function Subscribe() {
       },
       {
         q: "Is text chat free?",
-        a: "Yes. Text chat is always free with no message limits and never uses Diamonds.",
+        a: "Free users can send up to 10 chat messages in total. Subscribe to chat without limits. Text chat never uses Diamonds.",
       },
     ],
     [],
